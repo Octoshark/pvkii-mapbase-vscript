@@ -2593,11 +2593,17 @@ END_SCRIPTDESC();
 //#define USE_OLD_EVENT_DESCRIPTORS 1
 */
 
+// @NMRiH - Felis
+int g_iNextScriptGameEventListenerIndex = 0;
+
 class CScriptGameEventListener : public IGameEventListener2, public CAutoGameSystem
 {
 public:
 	CScriptGameEventListener() : m_bActive(false)
 	{
+		// @NMRiH - Felis
+		m_index = g_iNextScriptGameEventListenerIndex++;
+
 #ifdef _DEBUG
 		m_nEventTick = 0;
 #endif
@@ -2620,7 +2626,11 @@ public:
 	void LevelShutdownPreEntity();
 
 private:
+	// @NMRiH - Felis: 64-bit compatibility
+	int m_index;
+	/*
 	//int m_index;
+	*/
 	HSCRIPT m_hCallback;
 	unsigned int m_iContextHash;
 	bool m_bActive;
@@ -2631,11 +2641,20 @@ private:
 	static StringHashFunctor Hash;
 	static inline unsigned int HashContext( const char* c ) { return c ? Hash(c) : 0; }
 
+	// @NMRiH - Felis: 64-bit compatibility
+	int GetIndex() const
+	{
+		// Previous implementation will always wrap over on int conversion
+		// Switch to incremental index instead of relying on pointer hacks
+		return m_index;
+	}
+	/*
 	inline int GetIndex()
 	{
 		Assert( sizeof(CScriptGameEventListener*) == sizeof(int) );
 		return reinterpret_cast<intptr_t>(this);
 	}
+	*/
 
 public:
 	enum // event data types, dependant on engine definitions
@@ -2978,6 +2997,19 @@ void CScriptGameEventListener::StopListeningForEvent()
 //-----------------------------------------------------------------------------
 bool CScriptGameEventListener::StopListeningToGameEvent( int listener )
 {
+	// @NMRiH - Felis: 64-bit compatibility
+	// This int -> ptr hack broke on x64, so just do a linear search
+	FOR_EACH_VEC( s_Listeners, i )
+	{
+		if ( s_Listeners[i]->GetIndex() == listener )
+		{
+			s_Listeners.FastRemove( i );
+			return true;
+		}
+	}
+
+	return false;
+	/*
 	CScriptGameEventListener *p = reinterpret_cast<CScriptGameEventListener*>(listener); // INT_TO_POINTER	
 
 	bool bRemoved = s_Listeners.FindAndFastRemove(p);
@@ -2987,6 +3019,7 @@ bool CScriptGameEventListener::StopListeningToGameEvent( int listener )
 	}
 
 	return bRemoved;
+	*/
 }
 
 //-----------------------------------------------------------------------------
