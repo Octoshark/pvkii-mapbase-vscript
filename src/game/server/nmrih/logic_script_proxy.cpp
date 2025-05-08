@@ -99,7 +99,7 @@ bool CLogicScriptProxy::InternalRunFunction( const char *pszScriptText, const Sc
 		szFuncName, sizeof( szFuncName ),
 		szFuncParams, sizeof( szFuncParams ) ) )
 	{
-		DevWarning( "Script proxy %s encountered an error! Invalid input. [%s]\n", GetDebugName(), pszScriptText );
+		Warning( "Script proxy %s encountered an error! Invalid input. [%s]\n", GetDebugName(), pszScriptText );
 		return false;
 	}
 
@@ -180,7 +180,7 @@ bool CLogicScriptProxy::InternalRunFunction( const char *pszScriptText, const Sc
 
 	if ( m_ScriptScope.Run( szRun, pszDebugName ) == SCRIPT_ERROR )
 	{
-		DevWarning( "Script proxy %s encountered an error! Failed to call function. [%s]\n", GetDebugName(), pszScriptText );
+		Warning( "Script proxy %s encountered an error! Failed to call function. [%s]\n", GetDebugName(), pszScriptText );
 
 		FlushProxyBuffer();
 		return false;
@@ -213,7 +213,7 @@ void CLogicScriptProxy::SetTargetEntity( const CBaseEntity *pEntity )
 		return;
 	}
 
-	if ( m_hTargetEntity.Get() != pEntity )
+	if ( !pEntity || m_hTargetEntity.Get() != pEntity )
 	{
 		const char *pszDebugName = "CLogicScriptProxy::SetTargetEntity";
 
@@ -230,7 +230,7 @@ void CLogicScriptProxy::SetTargetEntity( const CBaseEntity *pEntity )
 
 		if ( m_ScriptScope.Run( szRun, pszDebugName ) == SCRIPT_ERROR )
 		{
-			DevWarning( "Script proxy %s encountered an error! Failed to set target entity.\n", GetDebugName() );
+			Warning( "Script proxy %s encountered an error! Failed to set target entity.\n", GetDebugName() );
 		}
 	}
 
@@ -467,9 +467,21 @@ void CLogicScriptProxy::InputRunFunctionEHandle( inputdata_t &inputdata )
 //-----------------------------------------------------------------------------
 void CLogicScriptProxy::InputSetTargetEntity( inputdata_t &inputdata )
 {
-	const CBaseEntity *pEntity = gEntList.FindEntityByName( NULL, inputdata.value.StringID(), NULL, inputdata.pActivator );
-	if ( pEntity )
+	if ( inputdata.value.StringID() == NULL_STRING )
 	{
-		SetTargetEntity( pEntity );
+		// Passing null equals global scope
+		SetTargetEntity( NULL );
+		return;
 	}
+
+	const CBaseEntity *pEntity = gEntList.FindEntityByName( NULL, inputdata.value.StringID(), NULL, inputdata.pActivator );
+	if ( !pEntity )
+	{
+		Warning( "Script proxy %s encountered an error! SetTargetEntity couldn't find an entity named %s.\n",
+			GetDebugName(), STRING( inputdata.value.StringID() ) );
+
+		return;
+	}
+
+	SetTargetEntity( pEntity );
 }

@@ -140,7 +140,19 @@ class KeyValues;
 DECLARE_POINTER_HANDLE( HSCRIPT );
 #define INVALID_HSCRIPT ((HSCRIPT)-1)
 
+// @NMRiH - Felis: 64-bit compatibility
+#ifdef PLATFORM_64BITS
+#ifdef _MSC_VER
+typedef __int64 HScriptRaw;
+#else
+typedef long long HScriptRaw;
+#endif
+#else
 typedef unsigned int HScriptRaw;
+#endif
+/*
+typedef unsigned int HScriptRaw;
+*/
 
 enum ScriptLanguage_t
 {
@@ -290,13 +302,28 @@ enum ScriptFuncBindingFlags_t
 	SF_MEMBER_FUNC	= 0x01,
 };
 
+// @NMRiH - Felis: Replaced
+struct ScriptFunctionBindingStorageType_t
+{
+	intp m_ptr;
+	intp m_delta;
+	intp m_vtordisp;
+	intp m_vtable_index;
+};
+typedef bool (*ScriptBindingFunc_t)( ScriptFunctionBindingStorageType_t pFunction, void *pContext, ScriptVariant_t *pArguments, int nArguments, ScriptVariant_t *pReturn );
+/*
 typedef bool (*ScriptBindingFunc_t)( void *pFunction, void *pContext, ScriptVariant_t *pArguments, int nArguments, ScriptVariant_t *pReturn );
+*/
 
 struct ScriptFunctionBinding_t
 {
 	ScriptFuncDescriptor_t	m_desc;
 	ScriptBindingFunc_t		m_pfnBinding;
+	// @NMRiH - Felis: Replaced
+	ScriptFunctionBindingStorageType_t m_pFunction;
+	/*
 	void *					m_pFunction;
+	*/
 	unsigned				m_flags;
 };
 
@@ -582,6 +609,82 @@ struct ScriptEnumDesc_t
 #include "vscript_templates.h"
 
 // Lower level macro primitives
+// @NMRiH - Felis: Replaced with ScriptFunctionBindingStorageType_t variants, and made somewhat more readable...
+#define ScriptInitFunctionBinding( pScriptFunction, func ) \
+	ScriptInitFunctionBindingNamed( pScriptFunction, func, #func )
+
+#define ScriptInitFunctionBindingNamed( pScriptFunction, func, scriptName )                  \
+	do                                                                                       \
+	{                                                                                        \
+		ScriptInitFuncDescriptorNamed( ( &( pScriptFunction )->m_desc ), func, scriptName ); \
+		( pScriptFunction )->m_pfnBinding = ScriptCreateBinding( &func );                    \
+		( pScriptFunction )->m_pFunction = ScriptConvertFreeFuncPtrToVoid( &func );          \
+	} while ( 0 )
+
+#define ScriptInitMemberFunctionBinding( pScriptFunction, class, func ) \
+	ScriptInitMemberFunctionBinding_( pScriptFunction, class, func, #func )
+
+#define ScriptInitMemberFunctionBindingNamed( pScriptFunction, class, func, scriptName ) \
+	ScriptInitMemberFunctionBinding_( pScriptFunction, class, func, scriptName )
+
+#define ScriptInitMemberFunctionBinding_( pScriptFunction, class, func, scriptName )                  \
+	do                                                                                                \
+	{                                                                                                 \
+		ScriptInitMemberFuncDescriptor_( ( &( pScriptFunction )->m_desc ), class, func, scriptName ); \
+		( pScriptFunction )->m_pfnBinding = ScriptCreateBinding( ( ( class * )0 ), &class ::func );   \
+		( pScriptFunction )->m_pFunction = ScriptConvertFuncPtrToVoid( &class ::func );               \
+		( pScriptFunction )->m_flags = SF_MEMBER_FUNC;                                                \
+	} while ( 0 )
+
+#define ScriptInitClassDesc( pClassDesc, class, pBaseClassDesc ) \
+	ScriptInitClassDescNamed( pClassDesc, class, pBaseClassDesc, #class )
+
+#define ScriptInitClassDescNamed( pClassDesc, class, pBaseClassDesc, scriptName ) \
+	ScriptInitClassDescNamed_( pClassDesc, class, pBaseClassDesc, scriptName )
+
+#define ScriptInitClassDescNoBase( pClassDesc, class ) \
+	ScriptInitClassDescNoBaseNamed( pClassDesc, class, #class )
+
+#define ScriptInitClassDescNoBaseNamed( pClassDesc, class, scriptName ) \
+	ScriptInitClassDescNamed_( pClassDesc, class, NULL, scriptName )
+
+#define ScriptInitClassDescNamed_( pClassDesc, class, pBaseClassDesc, scriptName ) \
+	do                                                                             \
+	{                                                                              \
+		( pClassDesc )->m_pszScriptName = scriptName;                              \
+		( pClassDesc )->m_pszClassname = #class;                                   \
+		( pClassDesc )->m_pBaseDesc = pBaseClassDesc;                              \
+	} while ( 0 )
+
+#define ScriptAddFunctionToClassDesc( pClassDesc, class, func, description ) \
+	ScriptAddFunctionToClassDescNamed( pClassDesc, class, func, #func, description )
+
+#define ScriptAddFunctionToClassDescNamed( pClassDesc, class, func, scriptName, description )                                        \
+	do                                                                                                                               \
+	{                                                                                                                                \
+		ScriptFunctionBinding_t *pBinding = &( ( pClassDesc )->m_FunctionBindings[( pClassDesc )->m_FunctionBindings.AddToTail()] ); \
+		pBinding->m_desc.m_pszDescription = description;                                                                             \
+		ScriptInitMemberFunctionBindingNamed( pBinding, class, func, scriptName );                                                   \
+	} while ( 0 )
+
+//-----------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
+
+#define ScriptRegisterFunction( pVM, func, description ) \
+	ScriptRegisterFunctionNamed( pVM, func, #func, description )
+
+#define ScriptRegisterFunctionNamed( pVM, func, scriptName, description ) \
+	do                                                                    \
+	{                                                                     \
+		static ScriptFunctionBinding_t binding;                           \
+		binding.m_desc.m_pszDescription = description;                    \
+		binding.m_desc.m_Parameters.RemoveAll();                          \
+		ScriptInitFunctionBindingNamed( &binding, func, scriptName );     \
+		pVM->RegisterFunction( &binding );                                \
+	} while ( 0 )
+
+/*
 #define ScriptInitFunctionBinding( pScriptFunction, func )									ScriptInitFunctionBindingNamed( pScriptFunction, func, #func )
 #define ScriptInitFunctionBindingNamed( pScriptFunction, func, scriptName )					do { ScriptInitFuncDescriptorNamed( (&(pScriptFunction)->m_desc), func, scriptName ); (pScriptFunction)->m_pfnBinding = ScriptCreateBinding( &func ); (pScriptFunction)->m_pFunction = (void *)&func; } while (0)
 
@@ -604,6 +707,7 @@ struct ScriptEnumDesc_t
 
 #define ScriptRegisterFunction( pVM, func, description )									ScriptRegisterFunctionNamed( pVM, func, #func, description )
 #define ScriptRegisterFunctionNamed( pVM, func, scriptName, description )					do { static ScriptFunctionBinding_t binding; binding.m_desc.m_pszDescription = description; binding.m_desc.m_Parameters.RemoveAll(); ScriptInitFunctionBindingNamed( &binding, func, scriptName ); pVM->RegisterFunction( &binding ); } while (0)
+*/
 
 //-----------------------------------------------------------------------------
 // 

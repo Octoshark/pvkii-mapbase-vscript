@@ -295,7 +295,12 @@ namespace SQVector
 		// TODO: There must be a nicer way to store the data with the actual instance, there are
 		// default slots but they are really just pointers anyway and you need to hold a member
 		// pointer which is yet another pointer dereference
+
+		// @NMRiH - Felis: 64-bit compatibility
+		const SQInteger numParams = sq_gettop(vm);
+		/*
 		int numParams = sq_gettop(vm);
+		*/
 
 		float x = 0;
 		float y = 0;
@@ -1258,7 +1263,11 @@ bool getVariant(HSQUIRRELVM vm, SQInteger idx, ScriptVariant_t& variant)
 			return false;
 		}
 		char* buffer = new char[size + 1];
+		// @NMRiH - Felis
+		V_memcpy(buffer, val, (int)size);
+		/*
 		V_memcpy(buffer, val, size);
+		*/
 		buffer[size] = 0;
 		variant = buffer;
 		variant.m_flags |= SV_FREE;
@@ -3036,7 +3045,12 @@ int	SquirrelVM::GetNumTableEntries(HSCRIPT hScope)
 	Assert(hScope != INVALID_HSCRIPT);
 	sq_pushobject(vm_, *scope);
 
+	// @NMRiH - Felis
+	const SQInteger size = sq_getsize(vm_, -1);
+	const int count = (int)size;
+	/*
 	int count = sq_getsize(vm_, -1);
+	*/
 
 	sq_pop(vm_, 1);
 
@@ -3079,7 +3093,11 @@ int SquirrelVM::GetKeyValue(HSCRIPT hScope, int nIterator, ScriptVariant_t* pKey
 	}
 	sq_pop(vm_, 2);
 
+	// @NMRiH - Felis
+	return (int)nextiter;
+	/*
 	return nextiter;
+	*/
 }
 
 bool SquirrelVM::GetValue(HSCRIPT hScope, const char* pszKey, ScriptVariant_t* pValue)
@@ -3277,7 +3295,11 @@ enum ClassType
 
 SQInteger closure_write(SQUserPointer file, SQUserPointer p, SQInteger size)
 {
+	// @NMRiH - Felis
+	((CUtlBuffer*)file)->Put(p, (int)size);
+	/*
 	((CUtlBuffer*)file)->Put(p, size);
+	*/
 	return size;
 }
 
@@ -3320,8 +3342,13 @@ void SquirrelVM::WriteObject(CUtlBuffer* pBuffer, WriteStateMap& writeState, SQI
 		const char* val = nullptr;
 		SQInteger size = 0;
 		sq_getstringandsize(vm_, idx, &val, &size);
+		// @NMRiH - Felis
+		pBuffer->PutInt((int)size);
+		pBuffer->Put(val, (int)size);
+		/*
 		pBuffer->PutInt(size);
 		pBuffer->Put(val, size);
+		*/
 		break;
 	}
 	case OT_TABLE:
@@ -3334,10 +3361,18 @@ void SquirrelVM::WriteObject(CUtlBuffer* pBuffer, WriteStateMap& writeState, SQI
 		sq_getdelegate(vm_, idx);
 		WriteObject(pBuffer, writeState, -1);
 		sq_poptop(vm_);
+		// @NMRiH - Felis: 64-bit compatibility
+		SQInteger count = sq_getsize(vm_, idx);
+		/*
 		int count = sq_getsize(vm_, idx);
+		*/
 		sq_push(vm_, idx);
 		sq_pushnull(vm_);
+		// @NMRiH - Felis
+		pBuffer->PutInt((int)count);
+		/*
 		pBuffer->PutInt(count);
+		*/
 		while (SQ_SUCCEEDED(sq_next(vm_, -2)))
 		{
 			WriteObject(pBuffer, writeState, -2);
@@ -3356,8 +3391,13 @@ void SquirrelVM::WriteObject(CUtlBuffer* pBuffer, WriteStateMap& writeState, SQI
 		{
 			break;
 		}
+		// @NMRiH - Felis: 64-bit compatibility
+		SQInteger count = sq_getsize(vm_, idx);
+		pBuffer->PutInt((int)count);
+		/*
 		int count = sq_getsize(vm_, idx);
 		pBuffer->PutInt(count);
+		*/
 		sq_push(vm_, idx);
 		sq_pushnull(vm_);
 		while (SQ_SUCCEEDED(sq_next(vm_, -2)))
@@ -3403,7 +3443,11 @@ void SquirrelVM::WriteObject(CUtlBuffer* pBuffer, WriteStateMap& writeState, SQI
 				Error("Failed to write closure\n");
 			}
 
+			// @NMRiH - Felis: 64-bit compatibility
+			const SQInteger noutervalues = _closure(obj)->_function->_noutervalues;
+			/*
 			int noutervalues = _closure(obj)->_function->_noutervalues;
+			*/
 			for (int i = 0; i < noutervalues; ++i)
 			{
 				sq_pushobject(vm_, _closure(obj)->_outervalues[i]);
@@ -3411,7 +3455,11 @@ void SquirrelVM::WriteObject(CUtlBuffer* pBuffer, WriteStateMap& writeState, SQI
 				sq_poptop(vm_);
 			}
 
+			// @NMRiH - Felis: 64-bit compatibility
+			const SQInteger ndefaultparams = _closure(obj)->_function->_ndefaultparams;
+			/*
 			int ndefaultparams = _closure(obj)->_function->_ndefaultparams;
+			*/
 			for (int i = 0; i < ndefaultparams; ++i)
 			{
 				sq_pushobject(vm_, _closure(obj)->_defaultparams[i]);
@@ -3663,9 +3711,18 @@ void SquirrelVM::WriteState(CUtlBuffer* pBuffer)
 	sq_getstackobj(vm_, -1, &obj);
 	writeState.CheckCache(pBuffer, _table(obj));
 
+	// @NMRiH - Felis: 64-bit compatibility
+	SQInteger count = sq_getsize(vm_, 1);
+	/*
 	int count = sq_getsize(vm_, 1);
+	*/
 	sq_pushnull(vm_);
+
+	// @NMRiH - Felis
+	pBuffer->PutInt((int)count);
+	/*
 	pBuffer->PutInt(count);
+	*/
 
 	while (SQ_SUCCEEDED(sq_next(vm_, -2)))
 	{
@@ -3681,7 +3738,11 @@ void SquirrelVM::WriteState(CUtlBuffer* pBuffer)
 SQInteger closure_read(SQUserPointer file, SQUserPointer buf, SQInteger size)
 {
 	CUtlBuffer* pBuffer = (CUtlBuffer*)file;
+	// @NMRiH - Felis
+	pBuffer->Get(buf, (int)size);
+	/*
 	pBuffer->Get(buf, size);
+	*/
 	return pBuffer->IsValid() ? size : -1;
 }
 
@@ -3803,7 +3864,11 @@ void SquirrelVM::ReadObject(CUtlBuffer* pBuffer, ReadStateMap& readState)
 			vm_->Push(ret);
 			readState.StoreTopInCache(marker);
 
+			// @NMRiH - Felis: 64-bit compatibility
+			SQInteger noutervalues = _closure(ret)->_function->_noutervalues;
+			/*
 			int noutervalues = _closure(ret)->_function->_noutervalues;
+			*/
 			for (int i = 0; i < noutervalues; ++i)
 			{
 				ReadObject(pBuffer, readState);
@@ -3814,7 +3879,11 @@ void SquirrelVM::ReadObject(CUtlBuffer* pBuffer, ReadStateMap& readState)
 				sq_poptop(vm_);
 			}
 
+			// @NMRiH - Felis: 64-bit compatibility
+			SQInteger ndefaultparams = _closure(ret)->_function->_ndefaultparams;
+			/*
 			int ndefaultparams = _closure(ret)->_function->_ndefaultparams;
+			*/
 			for (int i = 0; i < ndefaultparams; ++i)
 			{
 				ReadObject(pBuffer, readState);
