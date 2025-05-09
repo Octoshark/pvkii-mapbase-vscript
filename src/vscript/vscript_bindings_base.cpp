@@ -496,8 +496,17 @@ void RegisterBaseBindings( IScriptVM *pVM )
 	ScriptRegisterConstant( pVM, CONTENTS_BLOCKLOS, "Spatial content flags." );
 	ScriptRegisterConstant( pVM, CONTENTS_OPAQUE, "Spatial content flags." );
 	ScriptRegisterConstant( pVM, CONTENTS_TESTFOGVOLUME, "Spatial content flags." );
+
+	// @PVK2 - Felis
+#ifdef PVK2_DLL
+	ScriptRegisterConstant( pVM, CONTENTS_PIRATES, "Spatial content flags." );
+	ScriptRegisterConstant( pVM, CONTENTS_VIKINGS, "Spatial content flags." );
+	ScriptRegisterConstant( pVM, CONTENTS_KNIGHTS, "Spatial content flags." );
+#else
 	ScriptRegisterConstant( pVM, CONTENTS_TEAM1, "Spatial content flags." );
 	ScriptRegisterConstant( pVM, CONTENTS_TEAM2, "Spatial content flags." );
+#endif
+
 	ScriptRegisterConstant( pVM, CONTENTS_IGNORE_NODRAW_OPAQUE, "Spatial content flags." );
 	ScriptRegisterConstant( pVM, CONTENTS_MOVEABLE, "Spatial content flags." );
 	ScriptRegisterConstant( pVM, CONTENTS_AREAPORTAL, "Spatial content flags." );

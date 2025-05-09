@@ -17,9 +17,17 @@
 #include "vscript_server.nut"
 #include "world.h"
 
+// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 // @NMRiH - Felis
 #include "nmrih_challenge_manager.h"
 #include "nmrih_shareddefs.h"
+#endif
+
+// @PVK2 - Felis
+#ifdef PVK2_DLL
+#include "pvk2_shareddefs.h"
+#endif
 
 #include "mapbase/vscript_singletons.h"
 
@@ -554,6 +562,8 @@ void ScriptCenterPrintAll( const char *pszMsgName )
 	ScriptCenterPrintAllWithParams( pszMsgName, NULL, NULL, NULL, NULL );
 }
 
+// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 // @NMRiH - Felis: FMOD stuff
 extern int FMOD_PrecacheSound( const char *pszSound, int inFlags, int *pOutFlags /* = NULL */ );
 bool Script_FMOD_PrecacheSound( const char *pszSound )
@@ -570,6 +580,7 @@ bool Script_FMOD_PrecacheSound( const char *pszSound )
 	const int index = FMOD_PrecacheSound( pszSound, 0, NULL );
 	return index != FMOD_INVALID_SOUND_INDEX;
 }
+#endif
 
 bool VScriptServerInit()
 {
@@ -686,8 +697,11 @@ bool VScriptServerInit()
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCenterPrintWithParams, "CenterPrintWithParams", "Sends HUD text message to the client, with optional string params. Format is limited to strings and is mapped to param order, i.e. %s1, %s2, %s3, %s4. You can pass an empty string as a param to skip. Usage: CenterPrintWithParams(<player ent handle>, <string>, <p1>, <p2>, <p3>, <p4>)" );
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCenterPrintAllWithParams, "CenterPrintAllWithParams", "Sends HUD text message to all clients, with optional string params. Format is limited to strings and is mapped to param order, i.e. %s1, %s2, %s3, %s4. You can pass an empty string as a param to skip. Usage: CenterPrintAllWithParams(<string>, <p1>, <p2>, <p3>, <p4>)" );
 
+				// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 				// @NMRiH - Felis: FMOD stuff
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_FMOD_PrecacheSound, "FMOD_PrecacheSound", "Precaches a sound file or soundscript entry to FMOD sound system." );
+#endif
 
 				// @NMRiH - Felis: Global entity listener
 				gEntList.AddListenerEntity( &g_ScriptEntityIterator );
@@ -820,9 +834,12 @@ CON_COMMAND( script_reload_code, "Execute a vscript file, replacing existing fun
 		return;
 	}
 
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	// @NMRiH - Felis
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	VScriptServerReplaceClosures( args[1], NULL, true );
 }
@@ -851,9 +868,12 @@ CON_COMMAND( script_reload_entity_code, "Execute all of this entity's VScripts, 
 	if ( !pPlayer )
 		return;
 
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	// @NMRiH - Felis
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	CBaseEntity *pEntity = NULL;
 	while ( (pEntity = GetNextCommandEntity( pPlayer, pszTarget, pEntity )) != NULL )
@@ -897,9 +917,12 @@ CON_COMMAND( script_reload_think, "Execute an activation script, replacing exist
 	if ( !pPlayer )
 		return;
 
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	// @NMRiH - Felis
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	CBaseEntity *pEntity = NULL;
 	while ( (pEntity = GetNextCommandEntity( pPlayer, pszTarget, pEntity )) != NULL )

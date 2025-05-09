@@ -15,6 +15,10 @@
 //=============================================================================//
 
 #include "cbase.h"
+
+// @PVK2 - Felis: Unavailable on client
+#if defined( PVK2_DLL ) && !defined( CLIENT_DLL )
+
 /* @NMRiH - Felis: TODO: Integrate these
 #include "matchers.h"
 */
@@ -36,6 +40,11 @@
 
 #include "vscript_funcs_shared.h"
 #include "vscript_singletons.h"
+
+// @PVK2 - Felis
+#ifdef PVK2_DLL
+#include "pvk2_shareddefs.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -1177,3 +1186,5 @@ void RegisterSharedScriptFunctions()
 
 	RegisterScriptSingletons();
 }
+
+#endif // defined( PVK2_DLL ) && !defined( CLIENT_DLL )

@@ -6,6 +6,10 @@
 //=============================================================================//
 
 #include "cbase.h"
+
+// @PVK2 - Felis: Unavailable on client
+#if defined( PVK2_DLL ) && !defined( CLIENT_DLL )
+
 #include "activitylist.h"
 #include "in_buttons.h"
 #include "rope_shared.h"
@@ -19,6 +23,13 @@
 
 // @NMRiH - Felis
 #include "particle_parse.h"
+
+// @PVK2 - Felis
+#ifdef PVK2_DLL
+#ifndef CLIENT_DLL
+#include "nav_area.h"
+#endif
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -596,6 +607,13 @@ void RegisterSharedScriptConstants()
 
 #endif
 
+	// @PVK2 - Felis: Our AI classes
+#ifdef PVK2_DLL
+	ScriptRegisterConstant( g_pScriptVM, CLASS_PARROT, "" );
+	ScriptRegisterConstant( g_pScriptVM, CLASS_BIRDS_AGGRESSIVE, "" );
+	ScriptRegisterConstant( g_pScriptVM, CLASS_FISH_PREDATOR, "" );
+	ScriptRegisterConstant( g_pScriptVM, CLASS_EARTH_FAUNA, "" );
+#else
 	// @NMRiH - Felis: Our AI classes
 	ScriptRegisterConstant( g_pScriptVM, CLASS_PLAYER_ALLY_VITAL, "Reserved for vital player allies." );
 	ScriptRegisterConstant( g_pScriptVM, CLASS_ZOMBIE, "Used by the living dead." );
@@ -603,6 +621,7 @@ void RegisterSharedScriptConstants()
 	ScriptRegisterConstant( g_pScriptVM, CLASS_NATIONAL_GUARD, "Reserved for the National Guard." );
 	ScriptRegisterConstant( g_pScriptVM, CLASS_BULLSEYE, "Used by npc_bullseye." );
 	ScriptRegisterConstant( g_pScriptVM, CLASS_EARTH_FAUNA, "Used by birds." );
+#endif
 
 	ScriptRegisterConstant( g_pScriptVM, NUM_AI_CLASSES, "Number of AI classes." );
 
@@ -683,7 +702,10 @@ void RegisterSharedScriptConstants()
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_NO_MERGE, "Don't merge this area with adjacent areas." );
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_OBSTACLE_TOP, "This nav area is the climb point on the tip of an obstacle." );
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_CLIFF, "This nav area is adjacent to a drop of at least CliffHeight." );
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_NO_ZOMBIE_SPAWN, "Zombies shouldn't spawn here." ); // NMRiH specific!
+#endif
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_FUNC_COST, "Area has designer specified cost controlled by func_nav_cost entities." );
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_HAS_ELEVATOR, "Area is in an elevator's path." );
 	ScriptRegisterConstant( g_pScriptVM, NAV_MESH_NAV_BLOCKER, "Area is blocked by nav blocker." );
@@ -699,3 +721,5 @@ void RegisterSharedScriptConstants()
 
 	RegisterWeaponScriptConstants();
 }
+
+#endif // defined( PVK2_DLL ) && !defined( CLIENT_DLL )

@@ -29,7 +29,12 @@ public:
 
 	CLogicScriptProxy();
 
+	// @PVK2 - Felis: OVERRIDE macro is undefined
+#ifdef PVK2_DLL
+	void UpdateOnRemove() override;
+#else
 	void UpdateOnRemove() OVERRIDE;
+#endif
 
 	void RunFunction( const char *pszScriptText ) { m_bError = !InternalRunFunction( pszScriptText, SCRIPT_PROXY_VOID ); }
 	void RunFunctionString( const char *pszScriptText ) { m_bError = !InternalRunFunction( pszScriptText, SCRIPT_PROXY_STRING ); }

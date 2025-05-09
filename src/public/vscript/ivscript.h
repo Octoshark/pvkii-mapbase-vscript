@@ -520,7 +520,13 @@ struct ScriptVariant_t
 	{
 		DevWarning( "No free conversion of string or vector script variant right now\n" );
 		// If want to support this, probably need to malloc string and require free on other side [3/24/2008 tom]
+
+		// @PVK2 - Felis: Evil build fix
+#ifdef PVK2_DLL
+		*pDest = const_cast<char *>( "" );
+#else
 		*pDest = "";
+#endif
 		return false;
 	}
 
