@@ -106,6 +106,14 @@ bool CLogicScriptProxy::InternalRunFunction( const char *pszScriptText, const Sc
 	const CBaseEntity *pTargetEntity = m_hTargetEntity.Get();
 	const bool bHasParams = szFuncParams[0] != '\0';
 
+	// In global scope, parse instance if one exists (e.g. <instance>.foo(bar))
+	const char *pszInstanceName = "getroottable()";
+	char szInstanceBuffer[512];
+	if ( !pTargetEntity && ParseInstanceName( szFuncName, szInstanceBuffer, sizeof( szInstanceBuffer ) ) )
+	{
+		pszInstanceName = szInstanceBuffer;
+	}
+
 	char szRawCallParams[1024];
 	if ( bHasParams )
 	{
@@ -116,7 +124,7 @@ bool CLogicScriptProxy::InternalRunFunction( const char *pszScriptText, const Sc
 		}
 		else
 		{
-			V_sprintf_safe( szRawCallParams, "rawcall(%s, getroottable(), %s)", szFuncName, szFuncParams );
+			V_sprintf_safe( szRawCallParams, "rawcall(%s, %s, %s)", szFuncName, pszInstanceName, szFuncParams );
 		}
 	}
 	else // Same, without params
@@ -127,7 +135,7 @@ bool CLogicScriptProxy::InternalRunFunction( const char *pszScriptText, const Sc
 		}
 		else
 		{
-			V_sprintf_safe( szRawCallParams, "rawcall(%s, getroottable())", szFuncName );
+			V_sprintf_safe( szRawCallParams, "rawcall(%s, %s)", szFuncName, pszInstanceName );
 		}
 	}
 
@@ -364,6 +372,50 @@ bool CLogicScriptProxy::ParseFunctionString( const char *pszInput, char *pszName
 	// Bad input
 	pszParamsBuffer[0] = '\0';
 	return false;
+}
+
+//-----------------------------------------------------------------------------
+bool CLogicScriptProxy::ParseInstanceName( const char *pszIn, char *pszOut, const int outSize )
+{
+	pszOut[0] = '\0';
+
+	// Strip actual function
+	char szStrippedInput[512];
+	int len = V_strlen( pszIn ) - 1;
+	while ( len > 0 && pszIn[len] != '.' )
+	{
+		--len;
+	}
+
+	if ( len <= 0 || len >= sizeof( szStrippedInput ) )
+	{
+		// No instance available
+		return false;
+	}
+
+	const int strippedInSize = min( len, (int)sizeof( szStrippedInput ) - 1 );
+	V_memcpy( szStrippedInput, pszIn, strippedInSize );
+	szStrippedInput[strippedInSize] = '\0';
+
+	// Append all occurances of '.' to support nesting
+	int i = 0;
+	char szToken[512];
+	const char *pszNext = nexttoken( szToken, szStrippedInput, '.' );
+	while ( pszNext )
+	{
+		if ( i != 0 )
+		{
+			// Retain characters for nested instances
+			V_strncat( pszOut, ".", outSize, 1 );
+		}
+
+		V_strncat( pszOut, szToken, outSize, COPY_ALL_CHARACTERS );
+
+		pszNext = nexttoken( szToken, pszNext, '.' );
+		++i;
+	}
+
+	return true;
 }
 
 //-----------------------------------------------------------------------------
