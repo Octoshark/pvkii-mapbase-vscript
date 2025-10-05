@@ -1952,7 +1952,15 @@ public:
 				HScriptRaw hScope = scopeMap->Key(j);
 				contextmap_t *contextMap = scopeMap->Element(j);
 
+				// @NMRiH - Felis: 64-bit compatibility
+#ifdef PLATFORM_64BITS
+				Msg( "\t(0x%llX) [%p]\n", hScope, (void *)contextMap );
+#else
 				Msg( "\t(0x%X) [%p]\n", hScope, (void *)contextMap );
+#endif
+				/*
+				Msg( "\t(0x%X) [%p]\n", hScope, (void *)contextMap );
+				*/
 				Msg( "\t{\n" );
 
 				FOR_EACH_VEC_PTR( contextMap, k )

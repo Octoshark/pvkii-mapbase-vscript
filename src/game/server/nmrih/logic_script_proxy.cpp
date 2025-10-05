@@ -468,10 +468,6 @@ void CLogicScriptProxy::SetProxyBufferBool( const bool bValue )
 void CLogicScriptProxy::SetProxyBufferEHandle( const HSCRIPT hEntity )
 {
 	m_hReturnValue = HScriptToClass<CBaseEntity>( hEntity );
-	if ( !m_hReturnValue )
-	{
-		Warning( "Null entity handle returned by script proxy %s!\n", GetDebugName() );
-	}
 }
 
 //-----------------------------------------------------------------------------

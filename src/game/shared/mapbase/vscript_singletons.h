@@ -152,6 +152,7 @@ public:
 extern CNetMsgScriptHelper *g_ScriptNetMsg;
 
 // @NMRiH - Felis: Script nav area collector
+#ifndef CLIENT_DLL
 class CScriptNavArea;
 class CNavArea;
 
@@ -189,6 +190,18 @@ public:
 private:
 	CUtlMap<unsigned int, CScriptNavArea*, unsigned int> m_mapScriptNavAreas;
 };
+
+class CScriptNavAreaInstanceHelper : public IScriptInstanceHelper
+{
+public:
+	virtual ~CScriptNavAreaInstanceHelper() {}
+
+private:
+	bool ToString( void *p, char *pBuf, int bufSize ) OVERRIDE;
+};
+
+extern CScriptNavAreaInstanceHelper g_ScriptNavAreaInstanceHelper;
+#endif
 
 #ifdef CLIENT_DLL
 void VScriptSaveRestoreUtil_OnVMRestore();

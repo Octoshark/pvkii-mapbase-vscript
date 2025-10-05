@@ -5883,15 +5883,22 @@ public:
 	{
 		m_CachedID = pSource->GetID();
 		m_hScriptInstance = g_pScriptVM->RegisterInstance( this );
+		m_pCachedHidingSpotTables = NULL;
 	}
 
 	~CScriptNavArea()
 	{
 		if ( m_hScriptInstance && g_pScriptVM )
 		{
-			FOR_EACH_VEC( m_CachedHidingSpotTables, i )
+			if ( m_pCachedHidingSpotTables )
 			{
-				g_pScriptVM->ReleaseScript( m_CachedHidingSpotTables[i] );
+				for ( int i = 0; i < m_pCachedHidingSpotTables->Count(); ++i )
+				{
+					g_pScriptVM->ReleaseScript( m_pCachedHidingSpotTables->Element( i ) );
+				}
+
+				delete m_pCachedHidingSpotTables;
+				m_pCachedHidingSpotTables = NULL;
 			}
 
 			g_pScriptVM->RemoveInstance( m_hScriptInstance );
@@ -5988,14 +5995,14 @@ public:
 			return;
 		}
 
-		if ( !m_CachedHidingSpotTables.IsEmpty() )
+		if ( m_pCachedHidingSpotTables && !m_pCachedHidingSpotTables->IsEmpty() )
 		{
 			// Use cached spots
-			FOR_EACH_VEC( m_CachedHidingSpotTables, i )
+			for ( int i = 0; i < m_pCachedHidingSpotTables->Count(); ++i )
 			{
 				char szNestedTableName[64];
 				V_sprintf_safe( szNestedTableName, "spot%d", i );
-				g_pScriptVM->SetValue( hTable, szNestedTableName, m_CachedHidingSpotTables[i] );
+				g_pScriptVM->SetValue( hTable, szNestedTableName, m_pCachedHidingSpotTables->Element( i ) );
 			}
 
 			return;
@@ -6006,6 +6013,11 @@ public:
 		// Create nested tables containing hiding spot properties
 		// These are cached and released by area script instance, so we don't have to care about lifespan
 		// Hiding spots aren't computed during runtime (outside generation), so we can safely cache those
+		if ( !m_pCachedHidingSpotTables )
+		{
+			m_pCachedHidingSpotTables = new CUtlVector<ScriptVariant_t>;
+		}
+
 		for ( int i = 0; i < pHidingSpots->Count(); ++i )
 		{
 			const HidingSpot *pSpot = pHidingSpots->Element( i );
@@ -6026,7 +6038,7 @@ public:
 			g_pScriptVM->SetValue( hNestedTable, "area", ToAreaHandle( pSpot->GetArea() ) );
 			g_pScriptVM->SetValue( hNestedTable, "flags", pSpot->GetFlags() );
 
-			m_CachedHidingSpotTables.AddToTail( hNestedTable );
+			m_pCachedHidingSpotTables->AddToTail( hNestedTable );
 		}
 	}
 
@@ -6221,10 +6233,20 @@ protected:
 private:
 	unsigned int m_CachedID;
 	HSCRIPT m_hScriptInstance;
-	CUtlVector<ScriptVariant_t> m_CachedHidingSpotTables;
+	CUtlVector<ScriptVariant_t> *m_pCachedHidingSpotTables;
 };
 
+bool CScriptNavAreaInstanceHelper::ToString( void *p, char *pBuf, const int bufSize )
+{
+	const CScriptNavArea *pArea = static_cast<CScriptNavArea *>( p );
+	V_snprintf( pBuf, bufSize, "([%u] Area)", pArea->GetID() );
+	return true;
+}
+
+CScriptNavAreaInstanceHelper g_ScriptNavAreaInstanceHelper;
+
 BEGIN_SCRIPTDESC_ROOT( CScriptNavArea, "Rectangular region defining a walkable area in the environment." )
+	DEFINE_SCRIPT_INSTANCE_HELPER( &g_ScriptNavAreaInstanceHelper )
 	DEFINE_SCRIPTFUNC( AddIncomingConnection, "The area 'source' is connected to us along our 'incomingEdgeDir' edge." )
 	DEFINE_SCRIPTFUNC( ComputeClosestPointInPortal, "Compute closest point within the 'portal' between to adjacent areas." )
 	DEFINE_SCRIPTFUNC( ComputeDirection, "Returns direction from this area to the given point." )
@@ -6233,7 +6255,9 @@ BEGIN_SCRIPTDESC_ROOT( CScriptNavArea, "Rectangular region defining a walkable a
 	DEFINE_SCRIPTFUNC( ContainsOrigin, "Returns true if given point is on or above this area, but no others" )
 	DEFINE_SCRIPTFUNC( Disconnect, "Disconnect this area from given area." )
 	DEFINE_SCRIPTFUNC( FindRandomSpot, "" ) // NOTE: NMRiH specific method!
-	DEFINE_SCRIPTFUNC( GetAdjacentArea, "Returns number of connected areas in given direction." )
+	DEFINE_SCRIPTFUNC( GetAdjacentArea, "Returns the n'th adjacent area in the given direction." )
+	DEFINE_SCRIPTFUNC( GetAdjacentAreas, "Fills table with connected adjacent areas in the given direction." )
+	DEFINE_SCRIPTFUNC( GetAdjacentCount, "Returns number of connected areas in given direction." )
 	DEFINE_SCRIPTFUNC( GetAttributes, "" )
 	DEFINE_SCRIPTFUNC( GetAvoidanceObstacleHeight, "Returns the maximum height of the obstruction above the ground." )
 	DEFINE_SCRIPTFUNC( GetCenter, "" )
@@ -6330,7 +6354,7 @@ HSCRIPT CScriptNavAreaCollector::GetScriptInstance( const CNavArea *pArea )
 		return NULL;
 	}
 
-	const CScriptNavArea *pFound = Get( pArea );
+	const CScriptNavArea *pFound = GetByID( pArea->GetID() );
 
 	if ( !pFound )
 	{

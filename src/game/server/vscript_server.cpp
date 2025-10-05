@@ -418,6 +418,55 @@ static float ScriptTraceLine( const Vector &vecStart, const Vector &vecEnd, HSCR
 	}
 }
 
+// @NMRiH - Felis: Internal function for filling a table with trace_t
+void UTIL_ScriptFillTableWithTrace( HSCRIPT hTable, const trace_t &tr );
+
+// @NMRiH - Felis: Internal function for releasing variants we called GetValue on
+void UTIL_ScriptReleaseTransientValues( CUtlVector<ScriptVariant_t *> &transientValues );
+
+// @NMRiH - Felis: Script filter stub
+class CScriptTraceFilter : public CTraceFilterSimple
+{
+public:
+	CScriptTraceFilter( const IHandleEntity *passentity = NULL, const int collisionGroup = COLLISION_GROUP_NONE,
+						const HSCRIPT scriptCallback = NULL, const IHandleEntity *pOwnerEntity = NULL )
+		: CTraceFilterSimple( passentity, collisionGroup ), m_hScriptCallback( scriptCallback ), m_pOwnerEntity( pOwnerEntity )
+	{}
+
+	bool ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask ) OVERRIDE
+	{
+		if ( pHandleEntity == m_pOwnerEntity )
+			return false;
+
+		bool bRet = CTraceFilterSimple::ShouldHitEntity( pHandleEntity, contentsMask );
+		if ( bRet && m_hScriptCallback )
+		{
+			ScriptVariant_t hParams;
+			g_pScriptVM->CreateTable( hParams );
+			g_pScriptVM->SetValue( hParams, "entity", pHandleEntity ? ToHScript( EntityFromEntityHandle( pHandleEntity ) ) : NULL );
+			g_pScriptVM->SetValue( hParams, "contentsmask", contentsMask );
+
+			ScriptVariant_t hReturn;
+			g_pScriptVM->ExecuteFunction( m_hScriptCallback, &hParams, 1, &hReturn, NULL, true );
+
+			if ( hReturn.m_type != FIELD_VOID )
+			{
+				bRet = hReturn.m_bool;
+			}
+
+			g_pScriptVM->ReleaseScript( hParams );
+		}
+
+		return bRet;
+	}
+
+private:
+	HSCRIPT m_hScriptCallback;
+
+	// For TraceEntity, don't hit self!
+	const IHandleEntity *m_pOwnerEntity;
+};
+
 // @NMRiH - Felis: TraceLineEx, mimicking TF2 function
 static bool ScriptTraceLineEx( const HSCRIPT hTable )
 {
@@ -426,32 +475,223 @@ static bool ScriptTraceLineEx( const HSCRIPT hTable )
 		return false;
 	}
 
+	CUtlVector<ScriptVariant_t *> transientValues;
+
+	const char *pszErrorFormat = "Script error! Table passed to TraceLineEx requires \"%s\" value!\n";
+
 	// Inputs
-	// Start and end are required
+	// 'start' (required)
 	ScriptVariant_t start;
 	if ( !g_pScriptVM->GetValue( hTable, "start", &start ) )
 	{
+		Warning( pszErrorFormat, "start" );
 		return false;
 	}
+	transientValues.AddToTail( &start );
 
+	// 'end' (required)
 	ScriptVariant_t end;
 	if ( !g_pScriptVM->GetValue( hTable, "end", &end ) )
 	{
-		// 'start' exists, so release it
-		g_pScriptVM->ReleaseValue( start );
+		Warning( pszErrorFormat, "end" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+	transientValues.AddToTail( &end );
+
+	// 'mask'
+	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
+	g_pScriptVM->GetValue( hTable, "mask", &mask );
+	transientValues.AddToTail( &mask );
+
+	// 'ignore'
+	ScriptVariant_t ignore( ( HSCRIPT )NULL );
+	g_pScriptVM->GetValue( hTable, "ignore", &ignore );
+	transientValues.AddToTail( &ignore );
+
+	// 'callback'
+	ScriptVariant_t callback( ( HSCRIPT )NULL );
+	g_pScriptVM->GetValue( hTable, "callback", &callback );
+	transientValues.AddToTail( &callback );
+
+	// Trace
+	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript );
+	trace_t tr;
+	UTIL_TraceLine( *start.m_pVector, *end.m_pVector, mask.m_int, &filter, &tr );
+
+	UTIL_ScriptFillTableWithTrace( hTable, tr );
+
+	UTIL_ScriptReleaseTransientValues( transientValues );
+	return true;
+}
+
+// @NMRiH - Felis: TraceHull, mimicking TF2 function
+static bool ScriptTraceHull( const HSCRIPT hTable )
+{
+	if ( !g_pScriptVM->EnsureObjectIsTable( hTable ) )
+	{
 		return false;
 	}
 
-	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
-	ScriptVariant_t ignore( (HSCRIPT)NULL );
+	CUtlVector<ScriptVariant_t *> transientValues;
 
+	const char *pszErrorFormat = "Script error! Table passed to TraceHull requires \"%s\" value!\n";
+
+	// Inputs
+	// 'start' (required)
+	ScriptVariant_t start;
+	if ( !g_pScriptVM->GetValue( hTable, "start", &start ) )
+	{
+		Warning( pszErrorFormat, "start" );
+		return false;
+	}
+	transientValues.AddToTail( &start );
+
+	// 'end' (required)
+	ScriptVariant_t end;
+	if ( !g_pScriptVM->GetValue( hTable, "end", &end ) )
+	{
+		Warning( pszErrorFormat, "end" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+	transientValues.AddToTail( &end );
+
+	// 'hullmin' (required)
+	ScriptVariant_t hullmin;
+	if ( !g_pScriptVM->GetValue( hTable, "hullmin", &end ) )
+	{
+		Warning( pszErrorFormat, "hullmin" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+	transientValues.AddToTail( &hullmin );
+
+	// 'hullmax' (required)
+	ScriptVariant_t hullmax;
+	if ( !g_pScriptVM->GetValue( hTable, "hullmax", &end ) )
+	{
+		Warning( pszErrorFormat, "hullmax" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+	transientValues.AddToTail( &hullmax );
+
+	// 'mask'
+	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
 	g_pScriptVM->GetValue( hTable, "mask", &mask );
+	transientValues.AddToTail( &mask );
+
+	// 'ignore'
+	ScriptVariant_t ignore( ( HSCRIPT )NULL );
 	g_pScriptVM->GetValue( hTable, "ignore", &ignore );
+	transientValues.AddToTail( &ignore );
+
+	// 'callback'
+	ScriptVariant_t callback( ( HSCRIPT )NULL );
+	g_pScriptVM->GetValue( hTable, "callback", &callback );
+	transientValues.AddToTail( &callback );
 
 	// Trace
+	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript );
 	trace_t tr;
-	UTIL_TraceLine( *start.m_pVector, *end.m_pVector, mask.m_int, ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, &tr );
+	UTIL_TraceHull( *start.m_pVector, *end.m_pVector,
+					*hullmin.m_pVector, *hullmax.m_pVector,
+					mask.m_int, &filter, &tr );
 
+	UTIL_ScriptFillTableWithTrace( hTable, tr );
+
+	UTIL_ScriptReleaseTransientValues( transientValues );
+	return true;
+}
+
+// @NMRiH - Felis
+static bool ScriptTraceEntity( const HSCRIPT hTable )
+{
+	if ( !g_pScriptVM->EnsureObjectIsTable( hTable ) )
+	{
+		return false;
+	}
+
+	CUtlVector<ScriptVariant_t *> transientValues;
+
+	const char *pszErrorFormat = "Script error! Table passed to TraceEntity requires \"%s\" value!\n";
+
+	// Inputs
+	// 'entity' (required)
+	ScriptVariant_t entity;
+	if ( !g_pScriptVM->GetValue( hTable, "entity", &entity ) )
+	{
+		Warning( pszErrorFormat, "entity" );
+		return false;
+	}
+	transientValues.AddToTail( &entity );
+
+	// Entity variant must be a valid handle
+	CBaseEntity *pEntity = ( entity.m_type == FIELD_HSCRIPT ) ? ToEnt( entity ) : NULL;
+	if ( !pEntity )
+	{
+		Warning( "Script error! TraceEntity requires \"entity\" to be a valid handle!\n" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+
+	// 'start' (required)
+	ScriptVariant_t start;
+	if ( !g_pScriptVM->GetValue( hTable, "start", &start ) )
+	{
+		Warning( pszErrorFormat, "start" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+	transientValues.AddToTail( &start );
+
+	// 'end' (required)
+	ScriptVariant_t end;
+	if ( !g_pScriptVM->GetValue( hTable, "end", &end ) )
+	{
+		Warning( pszErrorFormat, "end" );
+
+		UTIL_ScriptReleaseTransientValues( transientValues );
+		return false;
+	}
+	transientValues.AddToTail( &end );
+
+	// 'mask'
+	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
+	g_pScriptVM->GetValue( hTable, "mask", &mask );
+	transientValues.AddToTail( &mask );
+
+	// 'ignore'
+	ScriptVariant_t ignore( ( HSCRIPT )NULL );
+	g_pScriptVM->GetValue( hTable, "ignore", &ignore );
+	transientValues.AddToTail( &ignore );
+
+	// 'callback'
+	ScriptVariant_t callback( ( HSCRIPT )NULL );
+	g_pScriptVM->GetValue( hTable, "callback", &callback );
+	transientValues.AddToTail( &callback );
+
+	// Trace
+	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript, pEntity );
+	trace_t tr;
+	UTIL_TraceEntity( pEntity, *start.m_pVector, *end.m_pVector, mask.m_int, &filter, &tr );
+
+	UTIL_ScriptFillTableWithTrace( hTable, tr );
+
+	UTIL_ScriptReleaseTransientValues( transientValues );
+	return true;
+}
+
+// @NMRiH - Felis
+void UTIL_ScriptFillTableWithTrace( const HSCRIPT hTable, const trace_t &tr )
+{
 	const bool bDidHit = tr.DidHit();
 
 	// Outputs
@@ -488,14 +728,19 @@ static bool ScriptTraceLineEx( const HSCRIPT hTable )
 	g_pScriptVM->SetValue( hTable, "surface_name", ScriptVariant_t( tr.surface.name ) );
 	g_pScriptVM->SetValue( hTable, "surface_flags", ScriptVariant_t( tr.surface.flags ) );
 	g_pScriptVM->SetValue( hTable, "surface_props", ScriptVariant_t( tr.surface.surfaceProps ) );
+}
 
-	// Release variants we called GetValue on
-	g_pScriptVM->ReleaseValue( start );
-	g_pScriptVM->ReleaseValue( end );
-	g_pScriptVM->ReleaseValue( mask );
-	g_pScriptVM->ReleaseValue( ignore );
+// @NMRiH - Felis
+void UTIL_ScriptReleaseTransientValues( CUtlVector<ScriptVariant_t *> &transientValues )
+{
+	FOR_EACH_VEC( transientValues, idx )
+	{
+		ScriptVariant_t &value = *transientValues[idx];
+		if ( !value.m_hScript )
+			continue;
 
-	return true;
+		g_pScriptVM->ReleaseValue( value );
+	}
 }
 
 #ifdef MAPBASE_VSCRIPT
@@ -654,6 +899,8 @@ bool VScriptServerInit()
 
 				// @NMRiH - Felis
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptTraceLineEx, "TraceLineEx", "Does a raycast along a line specified by two vectors, returning the first entity or geometry hit along the way. Results are written to the passed-in table. The input variables are kept in the table after the trace." );
+				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptTraceHull, "TraceHull", "Does a box (AABB) sweep along a path defined by two vectors, returning the first entity or geometry hit along the way. Results are written to the passed-in table." );
+				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptTraceEntity, "TraceEntity", "Sweeps a particular entity through the world. Results are written to the passed-in table. The input variables are kept in the table after the trace." );
 
 				ScriptRegisterFunction( g_pScriptVM, Time, "Get the current server time" );
 				ScriptRegisterFunction( g_pScriptVM, FrameTime, "Get the time spent on the server in the last frame" );

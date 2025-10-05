@@ -1781,7 +1781,11 @@ struct SquirrelSafeCheck
 					pszSrc = si.source;
 
 				char szBuffer[64];
+#ifdef PLATFORM_64BITS
+				V_sprintf_safe(szBuffer, "FUNCTION [%s()] %s line [%lld]\n", pszFunc, pszSrc, si.line);
+#else
 				V_sprintf_safe(szBuffer, "FUNCTION [%s()] %s line [%d]\n", pszFunc, pszSrc, si.line);
+#endif
 				V_strcat_safe(szStack, szBuffer);
 				++level;
 			}
