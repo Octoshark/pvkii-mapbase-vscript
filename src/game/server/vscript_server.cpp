@@ -878,7 +878,8 @@ bool VScriptServerInit()
 
 			if( g_pScriptVM )
 			{
-				ConColorMsg( 0, CON_COLOR_VSCRIPT, "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+				// @NMRiH - Felis
+				NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
 
 				GetScriptHookManager().OnInit();
 
@@ -1002,7 +1003,8 @@ bool VScriptServerInit()
 	}
 	else
 	{
-		ConColorMsg( 0, CON_COLOR_VSCRIPT, "\nVSCRIPT: Scripting is disabled.\n" );
+		// @NMRiH - Felis
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "\nVSCRIPT: Scripting is disabled.\n" );
 	}
 	g_pScriptVM = NULL;
 	return false;

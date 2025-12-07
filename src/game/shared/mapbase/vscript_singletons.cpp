@@ -2814,7 +2814,7 @@ void CScriptGameEventListener::LoadEventsFromFile( const char *filename, const c
 	s_LoadedFiles.AddToTail( pKV );
 
 	// @NMRiH - Felis
-	ConColorMsg( 2, CON_COLOR_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
+	NMRiH_ConColorMsg( 2, CON_COLOR_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
 	/*
 	CGMsg( 2, CON_GROUP_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
 	*/
@@ -3051,11 +3051,103 @@ static int ListenToGameEvent( const char* szEvent, HSCRIPT hFunc, const char* sz
 	return p->ListenToGameEvent( szEvent, hFunc, szContext );
 }
 
+// @NMRiH - Felis: Disallow certain game events
+static const char *g_pszScriptGameEventExcludeList[]
+{
+	// Cheap achievement unlocks
+	"achievement_earned",
+	"achievement_event",
+	"user_data_downloaded",
+	"map_complete",
+	"player_extracted",
+	"entity_killed",
+	"watermelon_rescue",
+
+	// Challenge stuff
+	"challenge_start",
+	"challenge_end",
+	"challenge_checkpoint",
+	"challenge_invalid",
+
+	// False name change
+	"player_changename",
+
+	// False team join
+	"player_team",
+
+	// False chat (UI doesn't use this, but other listeners may)
+	"player_chat",
+
+	// False player state
+	"player_active",
+	"player_join",
+	"player_leave",
+	"player_welcome",
+	"player_join_game",
+	"player_disconnect",
+	"player_spawn",
+
+	// False game state
+	"state_change",
+	"nmrih_practice_ending",
+	"nmrih_reset_map",
+	"nmrih_round_begin",
+	"game_restarting",
+	"objective_complete",
+	"objective_fail",
+	"game_init",
+	"game_newmap",
+	"game_start",
+	"game_end",
+	"round_start",
+	"round_end",
+
+	// Client-side events
+	"spec_target_updated",
+	"demo_bookmark",
+
+	// Vote stuff
+	"vote_ended",
+	"vote_started",
+	"vote_changed",
+	"vote_passed",
+	"vote_failed",
+	"vote_cast",
+	"vote_options",
+};
+static CUtlDict<bool> g_dictScriptProtectedGameEvents;
+static bool IsGameEventScriptProtected( const char *pszName )
+{
+	// Build list for exclusions on first call
+	if ( g_dictScriptProtectedGameEvents.Count() == 0 )
+	{
+		for ( unsigned int i = 0; i < V_ARRAYSIZE( g_pszScriptGameEventExcludeList ); ++i )
+		{
+			g_dictScriptProtectedGameEvents.Insert( g_pszScriptGameEventExcludeList[i], true );
+		}
+	}
+
+	const int idx = g_dictScriptProtectedGameEvents.Find( pszName );
+	if ( idx != g_dictScriptProtectedGameEvents.InvalidIndex() )
+	{
+		return g_dictScriptProtectedGameEvents[idx];
+	}
+
+	return false;
+}
+
 //-----------------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------------
 static void FireGameEvent( const char* szEvent, HSCRIPT hTable )
 {
+	// @NMRiH - Felis
+	if ( IsGameEventScriptProtected( szEvent ) )
+	{
+		Warning( "Script error! Can't fire protected game event \"%s\"\n", szEvent );
+		return;
+	}
+
 	IGameEvent *event = gameeventmanager->CreateEvent( szEvent );
 	if ( event )
 	{
@@ -3089,6 +3181,13 @@ static void FireGameEvent( const char* szEvent, HSCRIPT hTable )
 //-----------------------------------------------------------------------------
 static void FireGameEventLocal( const char* szEvent, HSCRIPT hTable )
 {
+	// @NMRiH - Felis
+	if ( IsGameEventScriptProtected( szEvent ) )
+	{
+		Warning( "Script error! Can't fire protected game event \"%s\"\n", szEvent );
+		return;
+	}
+
 	IGameEvent *event = gameeventmanager->CreateEvent( szEvent );
 	if ( event )
 	{
@@ -3745,7 +3844,7 @@ void CNetMsgScriptHelper::ReceiveMessage( bf_read &msg )
 	if ( !g_pScriptVM )
 	{
 		// @NMRiH - Felis
-		ConColorMsg( 0, CON_COLOR_VSCRIPT, "%s CNetMsgScriptHelper: No VM on receiving side\n", DLL_LOC_STR );
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "%s CNetMsgScriptHelper: No VM on receiving side\n", DLL_LOC_STR );
 		/*
 		CGWarning( 0, CON_GROUP_VSCRIPT, DLL_LOC_STR " CNetMsgScriptHelper: No VM on receiving side\n" );
 		*/
