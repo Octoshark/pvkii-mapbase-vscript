@@ -443,7 +443,14 @@ CON_COMMAND( script_debug, "Connect the vscript VM to the script debugger" )
 	{
 		// @NMRiH - Felis: Ported from Mapbase
 		vscript_debugger_port = port;
+		
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
 		ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript VM is not running, waiting for it to attach the debugger to port %d...\n", port );
+#else
+		// @NMRiH - Felis
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript VM is not running, waiting for it to attach the debugger to port %d...\n", port );
+#endif
 		/*
 		Warning( "Scripting disabled or no server running\n" );
 		*/

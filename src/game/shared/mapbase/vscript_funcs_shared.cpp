@@ -131,8 +131,13 @@ void PrecacheEntityFromTable( const char *pszClassname, HSCRIPT hKV )
 {
 	if ( IsEntityCreationAllowedInScripts() == false )
 	{
-		// @NMRiH - Felis
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
 		ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript error: A script attempted to create an entity mid-game. Due to the server's settings, entity creation from scripts is only allowed during map init.\n" );
+#else
+		// @NMRiH - Felis
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript error: A script attempted to create an entity mid-game. Due to the server's settings, entity creation from scripts is only allowed during map init.\n" );
+#endif
 		/*
 		CGWarning( 0, CON_GROUP_VSCRIPT, "VScript error: A script attempted to create an entity mid-game. Due to the server's settings, entity creation from scripts is only allowed during map init.\n" );
 		*/
@@ -159,8 +164,13 @@ HSCRIPT SpawnEntityFromTable( const char *pszClassname, HSCRIPT hKV )
 {
 	if ( IsEntityCreationAllowedInScripts() == false )
 	{
-		// @NMRiH - Felis
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
 		ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript error: A script attempted to create an entity mid-game. Due to the server's settings, entity creation from scripts is only allowed during map init.\n" );
+#else
+		// @NMRiH - Felis
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript error: A script attempted to create an entity mid-game. Due to the server's settings, entity creation from scripts is only allowed during map init.\n" );
+#endif
 		/*
 		CGWarning( 0, CON_GROUP_VSCRIPT, "VScript error: A script attempted to create an entity mid-game. Due to the server's settings, entity creation from scripts is only allowed during map init.\n" );
 		*/

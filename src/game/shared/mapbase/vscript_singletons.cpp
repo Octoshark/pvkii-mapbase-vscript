@@ -2823,8 +2823,13 @@ void CScriptGameEventListener::LoadEventsFromFile( const char *filename, const c
 	// Store files (allocated KV)
 	s_LoadedFiles.AddToTail( pKV );
 
-	// @NMRiH - Felis
+	// @PVK2 - Felis
+#ifdef PVK2_DLL
 	ConColorMsg( 2, CON_COLOR_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
+#else
+	// @NMRiH - Felis
+	NMRiH_ConColorMsg( 2, CON_COLOR_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
+#endif
 	/*
 	CGMsg( 2, CON_GROUP_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
 	*/
@@ -3061,11 +3066,175 @@ static int ListenToGameEvent( const char* szEvent, HSCRIPT hFunc, const char* sz
 	return p->ListenToGameEvent( szEvent, hFunc, szContext );
 }
 
+// @NMRiH - Felis: Disallow certain game events
+// @PVK2 - Felis: List for our events
+#ifdef PVK2_DLL
+static const char *g_pszScriptGameEventExcludeList[]
+{
+	// Cheap achievement unlocks
+	"achievement_earned",
+	"achievement_event",
+	"achievement_event_almost",
+	"achievement_event_comp",
+	"user_data_downloaded",
+	"player_stats_updated",
+	"reputation_rank_earned",
+	"rank_awarded",
+	"rank_message",
+	
+	// False name change
+	"player_changename",
+	
+	// False class / team change
+	"player_changeteam",
+	"player_changeclass",
+	"player_team",
+
+	// False chat (UI doesn't use this, but other listeners may)
+	"player_chat",
+	
+	// False player state
+	"player_disconnect",
+	"player_spawn",
+	
+	// False game state
+	"game_init",
+	"game_newmap",
+	"game_start",
+	"game_end",
+	"round_start",
+	"round_end",
+	"match_end",
+	"match_clinched",
+	"compmatch_start",
+	"gamemode_roundrestart",
+	"gamemode_matchpoint",
+	"gamemode_overtime",
+	"gamemode_spawnready",
+	"gamemode_firstround_wait_begin",
+	"gamemode_firstround_wait_end",
+	
+	// Client-side events
+	"spec_target_updated",
+	"demo_bookmark",
+	"localplayer_melee_start_block",
+	"localplayer_melee_start_charge",
+	"localplayer_range_start_charge",
+	"localplayer_melee_attack",
+	"localplayer_melee_shield_bash",
+	"localplayer_spotted_entity",
+	
+	// Vote stuff
+	"vote_ended",
+	"vote_started",
+	"vote_changed",
+	"vote_passed",
+	"vote_failed",
+	"vote_cast",
+	"vote_options",
+	"player_nominate",
+	
+	// Competitive stats
+	"player_comp_stattrack",
+};
+#else
+static const char *g_pszScriptGameEventExcludeList[]
+{
+	// Cheap achievement unlocks
+	"achievement_earned",
+	"achievement_event",
+	"user_data_downloaded",
+	"map_complete",
+	"player_extracted",
+	"entity_killed",
+	"watermelon_rescue",
+
+	// Challenge stuff
+	"challenge_start",
+	"challenge_end",
+	"challenge_checkpoint",
+	"challenge_invalid",
+
+	// False name change
+	"player_changename",
+
+	// False team join
+	"player_team",
+
+	// False chat (UI doesn't use this, but other listeners may)
+	"player_chat",
+
+	// False player state
+	"player_active",
+	"player_join",
+	"player_leave",
+	"player_welcome",
+	"player_join_game",
+	"player_disconnect",
+	"player_spawn",
+
+	// False game state
+	"state_change",
+	"nmrih_practice_ending",
+	"nmrih_reset_map",
+	"nmrih_round_begin",
+	"game_restarting",
+	"objective_complete",
+	"objective_fail",
+	"game_init",
+	"game_newmap",
+	"game_start",
+	"game_end",
+	"round_start",
+	"round_end",
+
+	// Client-side events
+	"spec_target_updated",
+	"demo_bookmark",
+
+	// Vote stuff
+	"vote_ended",
+	"vote_started",
+	"vote_changed",
+	"vote_passed",
+	"vote_failed",
+	"vote_cast",
+	"vote_options",
+};
+#endif
+static CUtlDict<bool> g_dictScriptProtectedGameEvents;
+static bool IsGameEventScriptProtected( const char *pszName )
+{
+	// Build list for exclusions on first call
+	if ( g_dictScriptProtectedGameEvents.Count() == 0 )
+	{
+		for ( unsigned int i = 0; i < V_ARRAYSIZE( g_pszScriptGameEventExcludeList ); ++i )
+		{
+			g_dictScriptProtectedGameEvents.Insert( g_pszScriptGameEventExcludeList[i], true );
+		}
+	}
+
+	const int idx = g_dictScriptProtectedGameEvents.Find( pszName );
+	if ( idx != g_dictScriptProtectedGameEvents.InvalidIndex() )
+	{
+		return g_dictScriptProtectedGameEvents[idx];
+	}
+
+	return false;
+}
+
 //-----------------------------------------------------------------------------
 //
 //-----------------------------------------------------------------------------
 static void FireGameEvent( const char* szEvent, HSCRIPT hTable )
 {
+	// @NMRiH - Felis
+	if ( IsGameEventScriptProtected( szEvent ) )
+	{
+		Warning( "Script error! Can't fire protected game event \"%s\"\n", szEvent );
+		return;
+	}
+
 	IGameEvent *event = gameeventmanager->CreateEvent( szEvent );
 	if ( event )
 	{
@@ -3099,6 +3268,13 @@ static void FireGameEvent( const char* szEvent, HSCRIPT hTable )
 //-----------------------------------------------------------------------------
 static void FireGameEventLocal( const char* szEvent, HSCRIPT hTable )
 {
+	// @NMRiH - Felis
+	if ( IsGameEventScriptProtected( szEvent ) )
+	{
+		Warning( "Script error! Can't fire protected game event \"%s\"\n", szEvent );
+		return;
+	}
+
 	IGameEvent *event = gameeventmanager->CreateEvent( szEvent );
 	if ( event )
 	{
@@ -3754,8 +3930,13 @@ void CNetMsgScriptHelper::ReceiveMessage( bf_read &msg )
 	// Don't do anything if there's no VM here. This can happen if a message from the server goes to a VM-less client, or vice versa.
 	if ( !g_pScriptVM )
 	{
-		// @NMRiH - Felis
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
 		ConColorMsg( 0, CON_COLOR_VSCRIPT, "%s CNetMsgScriptHelper: No VM on receiving side\n", DLL_LOC_STR );
+#else
+		// @NMRiH - Felis
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "%s CNetMsgScriptHelper: No VM on receiving side\n", DLL_LOC_STR );
+#endif
 		/*
 		CGWarning( 0, CON_GROUP_VSCRIPT, DLL_LOC_STR " CNetMsgScriptHelper: No VM on receiving side\n" );
 		*/
@@ -5893,15 +6074,22 @@ public:
 	{
 		m_CachedID = pSource->GetID();
 		m_hScriptInstance = g_pScriptVM->RegisterInstance( this );
+		m_pCachedHidingSpotTables = NULL;
 	}
 
 	~CScriptNavArea()
 	{
 		if ( m_hScriptInstance && g_pScriptVM )
 		{
-			FOR_EACH_VEC( m_CachedHidingSpotTables, i )
+			if ( m_pCachedHidingSpotTables )
 			{
-				g_pScriptVM->ReleaseScript( m_CachedHidingSpotTables[i] );
+				for ( int i = 0; i < m_pCachedHidingSpotTables->Count(); ++i )
+				{
+					g_pScriptVM->ReleaseScript( m_pCachedHidingSpotTables->Element( i ) );
+				}
+
+				delete m_pCachedHidingSpotTables;
+				m_pCachedHidingSpotTables = NULL;
 			}
 
 			g_pScriptVM->RemoveInstance( m_hScriptInstance );
@@ -6001,14 +6189,14 @@ public:
 			return;
 		}
 
-		if ( !m_CachedHidingSpotTables.IsEmpty() )
+		if ( m_pCachedHidingSpotTables && !m_pCachedHidingSpotTables->IsEmpty() )
 		{
 			// Use cached spots
-			FOR_EACH_VEC( m_CachedHidingSpotTables, i )
+			for ( int i = 0; i < m_pCachedHidingSpotTables->Count(); ++i )
 			{
 				char szNestedTableName[64];
 				V_sprintf_safe( szNestedTableName, "spot%d", i );
-				g_pScriptVM->SetValue( hTable, szNestedTableName, m_CachedHidingSpotTables[i] );
+				g_pScriptVM->SetValue( hTable, szNestedTableName, m_pCachedHidingSpotTables->Element( i ) );
 			}
 
 			return;
@@ -6019,6 +6207,11 @@ public:
 		// Create nested tables containing hiding spot properties
 		// These are cached and released by area script instance, so we don't have to care about lifespan
 		// Hiding spots aren't computed during runtime (outside generation), so we can safely cache those
+		if ( !m_pCachedHidingSpotTables )
+		{
+			m_pCachedHidingSpotTables = new CUtlVector<ScriptVariant_t>;
+		}
+
 		for ( int i = 0; i < pHidingSpots->Count(); ++i )
 		{
 			const HidingSpot *pSpot = pHidingSpots->Element( i );
@@ -6039,7 +6232,7 @@ public:
 			g_pScriptVM->SetValue( hNestedTable, "area", ToAreaHandle( pSpot->GetArea() ) );
 			g_pScriptVM->SetValue( hNestedTable, "flags", pSpot->GetFlags() );
 
-			m_CachedHidingSpotTables.AddToTail( hNestedTable );
+			m_pCachedHidingSpotTables->AddToTail( hNestedTable );
 		}
 	}
 
@@ -6234,10 +6427,20 @@ protected:
 private:
 	unsigned int m_CachedID;
 	HSCRIPT m_hScriptInstance;
-	CUtlVector<ScriptVariant_t> m_CachedHidingSpotTables;
+	CUtlVector<ScriptVariant_t> *m_pCachedHidingSpotTables;
 };
 
+bool CScriptNavAreaInstanceHelper::ToString( void *p, char *pBuf, const int bufSize )
+{
+	const CScriptNavArea *pArea = static_cast<CScriptNavArea *>( p );
+	V_snprintf( pBuf, bufSize, "([%u] Area)", pArea->GetID() );
+	return true;
+}
+
+CScriptNavAreaInstanceHelper g_ScriptNavAreaInstanceHelper;
+
 BEGIN_SCRIPTDESC_ROOT( CScriptNavArea, "Rectangular region defining a walkable area in the environment." )
+	DEFINE_SCRIPT_INSTANCE_HELPER( &g_ScriptNavAreaInstanceHelper )
 	DEFINE_SCRIPTFUNC( AddIncomingConnection, "The area 'source' is connected to us along our 'incomingEdgeDir' edge." )
 	DEFINE_SCRIPTFUNC( ComputeClosestPointInPortal, "Compute closest point within the 'portal' between to adjacent areas." )
 	DEFINE_SCRIPTFUNC( ComputeDirection, "Returns direction from this area to the given point." )
@@ -6249,7 +6452,9 @@ BEGIN_SCRIPTDESC_ROOT( CScriptNavArea, "Rectangular region defining a walkable a
 #ifndef PVK2_DLL
 	DEFINE_SCRIPTFUNC( FindRandomSpot, "" ) // NOTE: NMRiH specific method!
 #endif
-	DEFINE_SCRIPTFUNC( GetAdjacentArea, "Returns number of connected areas in given direction." )
+	DEFINE_SCRIPTFUNC( GetAdjacentArea, "Returns the n'th adjacent area in the given direction." )
+	DEFINE_SCRIPTFUNC( GetAdjacentAreas, "Fills table with connected adjacent areas in the given direction." )
+	DEFINE_SCRIPTFUNC( GetAdjacentCount, "Returns number of connected areas in given direction." )
 	DEFINE_SCRIPTFUNC( GetAttributes, "" )
 	DEFINE_SCRIPTFUNC( GetAvoidanceObstacleHeight, "Returns the maximum height of the obstruction above the ground." )
 	DEFINE_SCRIPTFUNC( GetCenter, "" )
@@ -6346,7 +6551,7 @@ HSCRIPT CScriptNavAreaCollector::GetScriptInstance( const CNavArea *pArea )
 		return NULL;
 	}
 
-	const CScriptNavArea *pFound = Get( pArea );
+	const CScriptNavArea *pFound = GetByID( pArea->GetID() );
 
 	if ( !pFound )
 	{
