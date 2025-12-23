@@ -204,7 +204,12 @@ public:
 	virtual ~CScriptNavAreaInstanceHelper() {}
 
 private:
+	// @PVK2 - Felis: OVERRIDE macro is undefined
+#ifdef PVK2_DLL
+	bool ToString( void *p, char *pBuf, int bufSize ) override;
+#else
 	bool ToString( void *p, char *pBuf, int bufSize ) OVERRIDE;
+#endif
 };
 
 extern CScriptNavAreaInstanceHelper g_ScriptNavAreaInstanceHelper;

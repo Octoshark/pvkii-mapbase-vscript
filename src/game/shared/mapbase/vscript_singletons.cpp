@@ -2823,8 +2823,13 @@ void CScriptGameEventListener::LoadEventsFromFile( const char *filename, const c
 	// Store files (allocated KV)
 	s_LoadedFiles.AddToTail( pKV );
 
+	// @PVK2 - Felis
+#ifdef PVK2_DLL
+	ConColorMsg( 2, CON_COLOR_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
+#else
 	// @NMRiH - Felis
 	NMRiH_ConColorMsg( 2, CON_COLOR_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
+#endif
 	/*
 	CGMsg( 2, CON_GROUP_VSCRIPT, "CScriptGameEventListener::LoadEventsFromFile: Loaded [%s]%s (%i)\n", pathID, filename, count );
 	*/
@@ -3062,6 +3067,77 @@ static int ListenToGameEvent( const char* szEvent, HSCRIPT hFunc, const char* sz
 }
 
 // @NMRiH - Felis: Disallow certain game events
+// @PVK2 - Felis: List for our events
+#ifdef PVK2_DLL
+static const char *g_pszScriptGameEventExcludeList[]
+{
+	// Cheap achievement unlocks
+	"achievement_earned",
+	"achievement_event",
+	"achievement_event_almost",
+	"achievement_event_comp",
+	"user_data_downloaded",
+	"player_stats_updated",
+	"reputation_rank_earned",
+	"rank_awarded",
+	"rank_message",
+	
+	// False name change
+	"player_changename",
+	
+	// False class / team change
+	"player_changeteam",
+	"player_changeclass",
+	"player_team",
+
+	// False chat (UI doesn't use this, but other listeners may)
+	"player_chat",
+	
+	// False player state
+	"player_disconnect",
+	"player_spawn",
+	
+	// False game state
+	"game_init",
+	"game_newmap",
+	"game_start",
+	"game_end",
+	"round_start",
+	"round_end",
+	"match_end",
+	"match_clinched",
+	"compmatch_start",
+	"gamemode_roundrestart",
+	"gamemode_matchpoint",
+	"gamemode_overtime",
+	"gamemode_spawnready",
+	"gamemode_firstround_wait_begin",
+	"gamemode_firstround_wait_end",
+	
+	// Client-side events
+	"spec_target_updated",
+	"demo_bookmark",
+	"localplayer_melee_start_block",
+	"localplayer_melee_start_charge",
+	"localplayer_range_start_charge",
+	"localplayer_melee_attack",
+	"localplayer_melee_shield_bash",
+	"localplayer_spotted_entity",
+	
+	// Vote stuff
+	"vote_ended",
+	"vote_started",
+	"vote_changed",
+	"vote_passed",
+	"vote_failed",
+	"vote_cast",
+	"vote_options",
+	"player_nominate",
+	
+	// Competitive stats
+	"player_comp_stattrack",
+};
+#else
 static const char *g_pszScriptGameEventExcludeList[]
 {
 	// Cheap achievement unlocks
@@ -3125,6 +3201,7 @@ static const char *g_pszScriptGameEventExcludeList[]
 	"vote_cast",
 	"vote_options",
 };
+#endif
 static CUtlDict<bool> g_dictScriptProtectedGameEvents;
 static bool IsGameEventScriptProtected( const char *pszName )
 {
@@ -3853,8 +3930,13 @@ void CNetMsgScriptHelper::ReceiveMessage( bf_read &msg )
 	// Don't do anything if there's no VM here. This can happen if a message from the server goes to a VM-less client, or vice versa.
 	if ( !g_pScriptVM )
 	{
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
+		ConColorMsg( 0, CON_COLOR_VSCRIPT, "%s CNetMsgScriptHelper: No VM on receiving side\n", DLL_LOC_STR );
+#else
 		// @NMRiH - Felis
 		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "%s CNetMsgScriptHelper: No VM on receiving side\n", DLL_LOC_STR );
+#endif
 		/*
 		CGWarning( 0, CON_GROUP_VSCRIPT, DLL_LOC_STR " CNetMsgScriptHelper: No VM on receiving side\n" );
 		*/

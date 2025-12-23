@@ -68,6 +68,8 @@ BEGIN_SCRIPTENUM( IN, "Button mask bindings" )
 	DEFINE_ENUMCONST_NAMED( IN_ATTACK3, "ATTACK3", "Button for +attack3" )
 
 	// @NMRiH - Felis: Our buttons
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	DEFINE_ENUMCONST_NAMED( IN_MAGLITE, "MAGLITE", "Button for +maglite" )
 	DEFINE_ENUMCONST_NAMED( IN_SHOVE, "SHOVE", "Button for +shove" )
 	DEFINE_ENUMCONST_NAMED( IN_COMPASS, "COMPASS", "Button for +compass" )
@@ -77,6 +79,7 @@ BEGIN_SCRIPTENUM( IN, "Button mask bindings" )
 	DEFINE_ENUMCONST_NAMED( IN_DROPWEAPON, "DROPWEAPON", "Button for +dropweapon" )
 	DEFINE_ENUMCONST_NAMED( IN_UNLOAD, "UNLOAD", "Button for +unload" )
 	DEFINE_ENUMCONST_NAMED( IN_SELECTFIRE, "SELECTFIRE", "Button for +selectfire" )
+#endif
 
 END_SCRIPTENUM();
 
@@ -216,12 +219,15 @@ void RegisterSharedScriptConstants()
 	ScriptRegisterConstant( g_pScriptVM, DMG_BUCKSHOT, "Damage type used in damage information." );
 
 	// @NMRiH - Felis: Our damage types
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	ScriptRegisterConstant( g_pScriptVM, DMG_NOINFECTTURN, "When set, infected players won't turn into zombies on death." );
 	ScriptRegisterConstant( g_pScriptVM, DMG_INFECT, "When set, this damage source can infect a player." );
 	ScriptRegisterConstant( g_pScriptVM, DMG_BLEEDOUT, "Indicates bleeding damage." );
 	ScriptRegisterConstant( g_pScriptVM, DMG_HEADSHOT, "Indicates a headshot." );
 	ScriptRegisterConstant( g_pScriptVM, DMG_STAGGER, "When set, this damage source will shove zombies." );
 	ScriptRegisterConstant( g_pScriptVM, DMG_WPNSPECIAL, "When set, this damage source will trigger \"trigger_weapon\" entities." );
+#endif
 
 	// 
 	// Collision Groups
@@ -248,6 +254,8 @@ void RegisterSharedScriptConstants()
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_NPC_SCRIPTED, "Collision group used in GetCollisionGroup(), etc." );
 
 	// @NMRiH - Felis: Our collision groups
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_NPC2, "NPC greasing group." );
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_NPC3, "NPC greasing group." );
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_NPC4, "NPC greasing group." );
@@ -269,6 +277,7 @@ void RegisterSharedScriptConstants()
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_ITEM, "Collides with anything that isn't an NPC or a player." );
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_STUCK_WEAPON, "Used for non-colliding stuck weapons in zombies." );
 	ScriptRegisterConstant( g_pScriptVM, COLLISION_GROUP_MELEE_SWING, "Collision used for melee swing." );
+#endif
 
 	// 
 	// Flags

@@ -441,7 +441,12 @@ public:
 		: CTraceFilterSimple( passentity, collisionGroup ), m_hScriptCallback( scriptCallback ), m_pOwnerEntity( pOwnerEntity )
 	{}
 
+	// @PVK2 - Felis: OVERRIDE macro is undefined
+#ifdef PVK2_DLL
+	bool ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask ) override
+#else
 	bool ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask ) OVERRIDE
+#endif
 	{
 		if ( pHandleEntity == m_pOwnerEntity )
 			return false;
@@ -889,8 +894,13 @@ bool VScriptServerInit()
 
 			if( g_pScriptVM )
 			{
+				// @PVK2 - Felis
+#ifdef PVK2_DLL
+				ConColorMsg( 0, CON_COLOR_VSCRIPT, "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+#else
 				// @NMRiH - Felis
 				NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+#endif
 
 				GetScriptHookManager().OnInit();
 
@@ -1017,8 +1027,13 @@ bool VScriptServerInit()
 	}
 	else
 	{
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
+		ConColorMsg( 0, CON_COLOR_VSCRIPT, "\nVSCRIPT: Scripting is disabled.\n" );
+#else
 		// @NMRiH - Felis
 		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "\nVSCRIPT: Scripting is disabled.\n" );
+#endif
 	}
 	g_pScriptVM = NULL;
 	return false;
