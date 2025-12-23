@@ -140,6 +140,12 @@ class KeyValues;
 DECLARE_POINTER_HANDLE( HSCRIPT );
 #define INVALID_HSCRIPT ((HSCRIPT)-1)
 
+// @NMRiH - Felis: TF2 SDK compatibility
+inline bool IsValid( HSCRIPT hScript )
+{
+	return ( hScript != NULL && hScript != INVALID_HSCRIPT );
+}
+
 // @NMRiH - Felis: 64-bit compatibility
 #ifdef PLATFORM_64BITS
 #ifdef _MSC_VER
@@ -811,6 +817,11 @@ static inline int ToConstantVariant(int value)
 #define DEFINE_SCRIPTFUNC_NAMED( func, scriptName, description )							ScriptAddFunctionToClassDescNamed( pDesc, _className, func, scriptName, description );
 #define DEFINE_SCRIPT_CONSTRUCTOR()															ScriptAddConstructorToClassDesc( pDesc, _className );
 #define DEFINE_SCRIPT_INSTANCE_HELPER( p )													pDesc->pHelper = (p);
+
+// @NMRiH - Felis: TF2 SDK compatibility
+#define SCRIPTFUNC_CONCAT_(x, y) x##y
+#define SCRIPTFUNC_CONCAT(x, y) SCRIPTFUNC_CONCAT_(x, y)
+#define DEFINE_SCRIPTFUNC_WRAPPED( func, description )										DEFINE_SCRIPTFUNC_NAMED( SCRIPTFUNC_CONCAT( Script, func ), #func, description )
 
 // Use this for hooks which have no parameters
 #define DEFINE_SIMPLE_SCRIPTHOOK( hook, hookName, returnType, description ) \
