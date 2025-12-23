@@ -175,9 +175,16 @@ class CScriptNavAreaCollector : public CAutoGameSystem
 public:
 	CScriptNavAreaCollector( const char *name ) : CAutoGameSystem( name ) {}
 
+	// @PVK2 - Felis: OVERRIDE macro is undefined
+#ifdef PVK2_DLL
+	bool Init() override;
+	void Shutdown() override;
+	void LevelShutdownPreEntity() override;
+#else
 	bool Init() OVERRIDE;
 	void Shutdown() OVERRIDE;
 	void LevelShutdownPreEntity() OVERRIDE;
+#endif
 
 	HSCRIPT Register( const CNavArea *pArea );
 

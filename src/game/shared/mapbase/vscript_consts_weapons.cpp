@@ -6,10 +6,17 @@
 //=============================================================================//
 
 #include "cbase.h"
+
+// @PVK2 - Felis: Unavailable on client
+#if defined( PVK2_DLL ) && !defined( CLIENT_DLL )
+
 #include "basecombatweapon_shared.h"
 
+// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 // @NMRiH - Felis
 #include "sdk_shareddefs.h"
+#endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -18,6 +25,8 @@
 //=============================================================================
 //=============================================================================
 
+// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 BEGIN_SCRIPTENUM( WeaponSound, "Weapon sounds." )
 
 	DEFINE_ENUMCONST( EMPTY, "" )
@@ -133,6 +142,8 @@ BEGIN_SCRIPTENUM( WeaponID, "Weapon IDs for all NMRiH weapons." )
 
 END_SCRIPTENUM();
 
+#endif // PVK2_DLL
+
 //=============================================================================
 //=============================================================================
 
@@ -195,3 +206,5 @@ void RegisterWeaponScriptConstants()
 	ScriptRegisterConstant( g_pScriptVM, AUTOAIM_SCALE_DEFAULT, "Indicates default auto aim scale." );
 	ScriptRegisterConstant( g_pScriptVM, AUTOAIM_SCALE_DIRECT_ONLY, "Indicates auto aim should not be used except for direct hits." );
 }
+
+#endif // defined( PVK2_DLL ) && !defined( CLIENT_DLL )

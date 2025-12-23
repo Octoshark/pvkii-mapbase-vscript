@@ -21,8 +21,16 @@
 #include "mapbase/vscript_singletons.h"
 #endif
 
+// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 // @NMRiH - Felis
 #include "nmrih_challenge_manager.h"
+#endif
+
+// @PVK2 - Felis
+#ifdef PVK2_DLL
+#include "pvk2_shareddefs.h"
+#endif
 
 IScriptVM * g_pScriptVM;
 extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
@@ -226,9 +234,12 @@ CON_COMMAND( script, "Run the text as a script" )
 		return;
 	}
 
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	// @NMRiH - Felis
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	const char *pszScript = args.GetCommandString();
 
@@ -403,9 +414,12 @@ CON_COMMAND( script_execute, "Run a vscript file" )
 		return;
 	}
 
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	// @NMRiH - Felis
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	VScriptRunScript( args[1], true );
 }
@@ -446,7 +460,12 @@ CON_COMMAND( script_debug, "Connect the vscript VM to the script debugger" )
 	static bool bHintGiven = false;
 	if ( !bHintGiven )
 	{
+		// @PVK2 - Felis
+#ifdef PVK2_DLL
+		Msg( "Tip: Check out the \"sqdbg\" directory within \"pvkii/utils\" for instructions on how to get started.\n" );
+#else
 		Msg( "Tip: Check out the \"sqdbg\" directory within \"nmrih/utils\" for instructions on how to get started.\n" );
+#endif
 		bHintGiven = true;
 	}
 }

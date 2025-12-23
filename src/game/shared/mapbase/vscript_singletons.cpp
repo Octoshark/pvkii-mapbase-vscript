@@ -9,6 +9,10 @@
 //=============================================================================//
 
 #include "cbase.h"
+
+// @PVK2 - Felis: Unavailable on client
+#if defined( PVK2_DLL ) && !defined( CLIENT_DLL )
+
 #include <vgui_controls/Controls.h> 
 #include <vgui/ILocalize.h>
 #include "ammodef.h"
@@ -51,12 +55,18 @@
 // @NMRiH - Felis
 #include "utlbuffer.h"
 
+// @PVK2 - Felis: Our additions go here!
+#ifdef PVK2_DLL
+#include "pvk2_ruleset_manager.h"
+#include "pvk2_version.h"
+#else
 // @NMRiH - Felis: Our additions go here!
 #include "nmrih_gamerules.h"
 #include "nmrih_game_state.h"
 #include "nmrih_ruleset_manager.h"
 #include "nmrih_objective_manager.h"
 #include "nmrih_version.h"
+#endif
 
 #include "vscript_singletons.h"
 
@@ -6071,8 +6081,11 @@ public:
 		}
 	}
 
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	// NOTE: NMRiH specific method!
 	Vector FindRandomSpot() const { return GetArea()->GetRandomPointInArea(); }
+#endif
 
 	HSCRIPT GetAdjacentArea( const int dir, const int n ) const { return ToAreaHandle( GetArea()->GetAdjacentArea( GetSafeNavDirType( dir ), n ) ); }
 	void GetAdjacentAreas( const int dir, const HSCRIPT hTable ) const { FillTableWithConnectedAreas( GetArea()->GetAdjacentAreas( GetSafeNavDirType( dir ) ), hTable ); }
@@ -6353,7 +6366,10 @@ BEGIN_SCRIPTDESC_ROOT( CScriptNavArea, "Rectangular region defining a walkable a
 	DEFINE_SCRIPTFUNC( Contains, "Returns true if area completely contains other area." )
 	DEFINE_SCRIPTFUNC( ContainsOrigin, "Returns true if given point is on or above this area, but no others" )
 	DEFINE_SCRIPTFUNC( Disconnect, "Disconnect this area from given area." )
+	// @PVK2 - Felis: Unavailable
+#ifndef PVK2_DLL
 	DEFINE_SCRIPTFUNC( FindRandomSpot, "" ) // NOTE: NMRiH specific method!
+#endif
 	DEFINE_SCRIPTFUNC( GetAdjacentArea, "Returns the n'th adjacent area in the given direction." )
 	DEFINE_SCRIPTFUNC( GetAdjacentAreas, "Fills table with connected adjacent areas in the given direction." )
 	DEFINE_SCRIPTFUNC( GetAdjacentCount, "Returns number of connected areas in given direction." )
@@ -6834,10 +6850,18 @@ void RegisterScriptSingletons()
 	// @NMRiH - Felis: Nav mesh
 	g_pScriptVM->RegisterInstance( &g_ScriptNavMesh, "NavMesh" );
 
+	// @PVK2 - Felis: Our additions go here!
+#ifdef PVK2_DLL
+	g_pScriptVM->RegisterInstance( GetRulesetManager(), "RulesetManager" );
+	g_pScriptVM->RegisterInstance( &g_PVK2ScriptVersion, "Version" );
+#else
 	// @NMRiH - Felis: Our additions go here!
 	g_pScriptVM->RegisterInstance( NMRiHGameRules(), "GameRules" );
 	g_pScriptVM->RegisterInstance( &g_NMRiHScriptGameState, "GameState" );
 	g_pScriptVM->RegisterInstance( GetRulesetManager(), "RulesetManager" );
 	g_pScriptVM->RegisterInstance( &g_ObjectiveManager, "ObjectiveManager" );
 	g_pScriptVM->RegisterInstance( &g_NMRiHScriptVersion, "Version" );
+#endif
 }
+
+#endif // defined( PVK2_DLL ) && !defined( CLIENT_DLL )
