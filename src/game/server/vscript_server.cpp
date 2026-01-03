@@ -429,16 +429,165 @@ static float ScriptTraceLine( const Vector &vecStart, const Vector &vecEnd, HSCR
 // @NMRiH - Felis: Internal function for filling a table with trace_t
 void UTIL_ScriptFillTableWithTrace( HSCRIPT hTable, const trace_t &tr );
 
-// @NMRiH - Felis: Internal function for releasing variants we called GetValue on
-void UTIL_ScriptReleaseTransientValues( CUtlVector<ScriptVariant_t *> &transientValues );
+// @NMRiH - Felis: Internal "table-reader" class to:
+// - Automagically release variants we called GetValue on
+// - Safely deduce incoming type (to prevent null refs)
+// - Reduce copypasta, especially on required inputs...
+class CScriptTransientValues
+{
+public:
+	CScriptTransientValues( const HSCRIPT hTable, const char *pszFunctionName = "" )
+	{
+		m_hTable = hTable;
+		m_pszFunctionName = pszFunctionName;
+	}
+
+	~CScriptTransientValues()
+	{
+		FOR_EACH_VEC( m_vecTransientValues, idx )
+		{
+			g_pScriptVM->ReleaseValue( m_vecTransientValues[idx] );
+		}
+	}
+
+	int GetInt( const char *pszKey, const int defaultValue = 0 ) { return InternalGetValue<int>( pszKey, defaultValue ); }
+	float GetFloat( const char *pszKey, const float flDefaultValue = 0.0f ) { return InternalGetValue<float>( pszKey, flDefaultValue ); }
+	const char *GetString( const char *pszKey, const char *pszDefaultValue ) { return InternalGetString( pszKey, pszDefaultValue ); }
+	const Vector &GetVector( const char *pszKey ) { return InternalGetVector( pszKey ); }
+	HSCRIPT GetScriptInstance( const char *pszKey ) { return InternalGetValue<HSCRIPT>( pszKey ); }
+
+	//-----------------------------------------------------------------------------
+
+	bool GetRequiredValue( const char *pszKey, int &dest ) { return InternalGetRequiredValue( pszKey, dest ); }
+	bool GetRequiredValue( const char *pszKey, float &dest ) { return InternalGetRequiredValue( pszKey, dest ); }
+	bool GetRequiredValue( const char *pszKey, const char **pDest ) { return InternalGetRequiredString( pszKey, pDest ); }
+	bool GetRequiredValue( const char *pszKey, const Vector **pDest ) { return InternalGetRequiredVector( pszKey, pDest ); }
+	bool GetRequiredValue( const char *pszKey, HSCRIPT &dest ) { return InternalGetRequiredValue( pszKey, dest ); }
+
+protected:
+	bool GetVariant( const char *pszKey, ScriptVariant_t &variant )
+	{
+		if ( !g_pScriptVM->GetValue( m_hTable, pszKey, &variant ) )
+		{
+			return false;
+		}
+
+		if ( ( variant.m_flags & SV_FREE ) )
+		{
+			m_vecTransientValues.AddToTail( variant );
+		}
+
+		return true;
+	}
+
+	//-----------------------------------------------------------------------------
+
+	template <typename T>
+	T InternalGetValue( const char *pszKey, T defaultValue = 0 )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) ||
+			 ( ScriptDeduceType( T ) == FIELD_HSCRIPT && !variant.m_hScript ) )
+		{
+			return defaultValue;
+		}
+
+		return variant;
+	}
+
+	const char *InternalGetString( const char *pszKey, const char *pszDefaultValue = "" )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) || variant.m_type != FIELD_CSTRING )
+		{
+			return pszDefaultValue;
+		}
+
+		return variant.m_pszString;
+	}
+
+	const Vector &InternalGetVector( const char *pszKey )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) || variant.m_type != FIELD_VECTOR )
+		{
+			return vec3_origin;
+		}
+
+		return *variant.m_pVector;
+	}
+
+	//-----------------------------------------------------------------------------
+
+	template <typename T>
+	bool InternalGetRequiredValue( const char *pszKey, T &dest )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) )
+		{
+			PrintRequiredValueWarning( pszKey );
+			return false;
+		}
+
+		if ( ScriptDeduceType( T ) == FIELD_HSCRIPT && !variant.m_hScript )
+		{
+			dest = 0;
+		}
+		else
+		{
+			dest = variant;
+		}
+
+		return true;
+	}
+
+	bool InternalGetRequiredString( const char *pszKey, const char **pDest )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) || variant.m_type != FIELD_CSTRING )
+		{
+			PrintRequiredValueWarning( pszKey );
+
+			*pDest = "";
+			return false;
+		}
+
+		*pDest = variant.m_pszString;
+		return true;
+	}
+
+	bool InternalGetRequiredVector( const char *pszKey, const Vector **pDest )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) || variant.m_type != FIELD_VECTOR )
+		{
+			PrintRequiredValueWarning( pszKey );
+
+			*pDest = &vec3_origin;
+			return false;
+		}
+
+		*pDest = variant.m_pVector;
+		return true;
+	}
+
+	void PrintRequiredValueWarning( const char *pszKey ) const
+	{
+		Warning( "Script error! Table passed to %s requires valid \"%s\" value!\n", m_pszFunctionName, pszKey );
+	}
+
+private:
+	HSCRIPT m_hTable;
+	CUtlVector<ScriptVariant_t> m_vecTransientValues;
+	const char *m_pszFunctionName;
+};
 
 // @NMRiH - Felis: Script filter stub
 class CScriptTraceFilter : public CTraceFilterSimple
 {
 public:
-	CScriptTraceFilter( const IHandleEntity *passentity = NULL, const int collisionGroup = COLLISION_GROUP_NONE,
-						const HSCRIPT scriptCallback = NULL, const IHandleEntity *pOwnerEntity = NULL )
-		: CTraceFilterSimple( passentity, collisionGroup ), m_hScriptCallback( scriptCallback ), m_pOwnerEntity( pOwnerEntity )
+	CScriptTraceFilter( const IHandleEntity *passentity = NULL, const HSCRIPT scriptCallback = NULL, const IHandleEntity *pOwnerEntity = NULL )
+		: CTraceFilterSimple( passentity, COLLISION_GROUP_NONE ), m_hScriptCallback( scriptCallback ), m_pOwnerEntity( pOwnerEntity )
 	{}
 
 	// @PVK2 - Felis: OVERRIDE macro is undefined
@@ -488,54 +637,35 @@ static bool ScriptTraceLineEx( const HSCRIPT hTable )
 		return false;
 	}
 
-	CUtlVector<ScriptVariant_t *> transientValues;
-
-	const char *pszErrorFormat = "Script error! Table passed to TraceLineEx requires \"%s\" value!\n";
+	CScriptTransientValues vars( hTable, "TraceLineEx" );
 
 	// Inputs
 	// 'start' (required)
-	ScriptVariant_t start;
-	if ( !g_pScriptVM->GetValue( hTable, "start", &start ) )
+	const Vector *pVecStart;
+	if ( !vars.GetRequiredValue( "start", &pVecStart ) )
 	{
-		Warning( pszErrorFormat, "start" );
 		return false;
 	}
-	transientValues.AddToTail( &start );
 
 	// 'end' (required)
-	ScriptVariant_t end;
-	if ( !g_pScriptVM->GetValue( hTable, "end", &end ) )
+	const Vector *pVecEnd;
+	if ( !vars.GetRequiredValue( "end", &pVecEnd ) )
 	{
-		Warning( pszErrorFormat, "end" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
-	transientValues.AddToTail( &end );
 
-	// 'mask'
-	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
-	g_pScriptVM->GetValue( hTable, "mask", &mask );
-	transientValues.AddToTail( &mask );
-
-	// 'ignore'
-	ScriptVariant_t ignore( ( HSCRIPT )NULL );
-	g_pScriptVM->GetValue( hTable, "ignore", &ignore );
-	transientValues.AddToTail( &ignore );
-
-	// 'callback'
-	ScriptVariant_t callback( ( HSCRIPT )NULL );
-	g_pScriptVM->GetValue( hTable, "callback", &callback );
-	transientValues.AddToTail( &callback );
+	// Optional variables
+	const int mask = vars.GetInt( "mask", MASK_VISIBLE_AND_NPCS );
+	const HSCRIPT ignore = vars.GetScriptInstance( "ignore" );
+	const HSCRIPT callback = vars.GetScriptInstance( "callback" );
 
 	// Trace
-	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript );
+	CScriptTraceFilter filter( ToEnt( ignore ), callback );
 	trace_t tr;
-	UTIL_TraceLine( *start.m_pVector, *end.m_pVector, mask.m_int, &filter, &tr );
+	UTIL_TraceLine( *pVecStart, *pVecEnd, mask, &filter, &tr );
 
 	UTIL_ScriptFillTableWithTrace( hTable, tr );
 
-	UTIL_ScriptReleaseTransientValues( transientValues );
 	return true;
 }
 
@@ -547,78 +677,51 @@ static bool ScriptTraceHull( const HSCRIPT hTable )
 		return false;
 	}
 
-	CUtlVector<ScriptVariant_t *> transientValues;
-
-	const char *pszErrorFormat = "Script error! Table passed to TraceHull requires \"%s\" value!\n";
+	CScriptTransientValues vars( hTable, "TraceHull" );
 
 	// Inputs
 	// 'start' (required)
-	ScriptVariant_t start;
-	if ( !g_pScriptVM->GetValue( hTable, "start", &start ) )
+	const Vector *pVecStart;
+	if ( !vars.GetRequiredValue( "start", &pVecStart ) )
 	{
-		Warning( pszErrorFormat, "start" );
 		return false;
 	}
-	transientValues.AddToTail( &start );
 
 	// 'end' (required)
-	ScriptVariant_t end;
-	if ( !g_pScriptVM->GetValue( hTable, "end", &end ) )
+	const Vector *pVecEnd;
+	if ( !vars.GetRequiredValue( "end", &pVecEnd ) )
 	{
-		Warning( pszErrorFormat, "end" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
-	transientValues.AddToTail( &end );
 
 	// 'hullmin' (required)
-	ScriptVariant_t hullmin;
-	if ( !g_pScriptVM->GetValue( hTable, "hullmin", &end ) )
+	const Vector *pVecHullMin;
+	if ( !vars.GetRequiredValue( "hullmin", &pVecHullMin ) )
 	{
-		Warning( pszErrorFormat, "hullmin" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
-	transientValues.AddToTail( &hullmin );
 
 	// 'hullmax' (required)
-	ScriptVariant_t hullmax;
-	if ( !g_pScriptVM->GetValue( hTable, "hullmax", &end ) )
+	const Vector *pVecHullMax;
+	if ( !vars.GetRequiredValue( "hullmax", &pVecHullMax ) )
 	{
-		Warning( pszErrorFormat, "hullmax" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
-	transientValues.AddToTail( &hullmax );
 
-	// 'mask'
-	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
-	g_pScriptVM->GetValue( hTable, "mask", &mask );
-	transientValues.AddToTail( &mask );
-
-	// 'ignore'
-	ScriptVariant_t ignore( ( HSCRIPT )NULL );
-	g_pScriptVM->GetValue( hTable, "ignore", &ignore );
-	transientValues.AddToTail( &ignore );
-
-	// 'callback'
-	ScriptVariant_t callback( ( HSCRIPT )NULL );
-	g_pScriptVM->GetValue( hTable, "callback", &callback );
-	transientValues.AddToTail( &callback );
+	// Optional variables
+	const int mask = vars.GetInt( "mask", MASK_VISIBLE_AND_NPCS );
+	const HSCRIPT ignore = vars.GetScriptInstance( "ignore" );
+	const HSCRIPT callback = vars.GetScriptInstance( "callback" );
 
 	// Trace
-	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript );
+	CScriptTraceFilter filter( ToEnt( ignore ), callback );
 	trace_t tr;
-	UTIL_TraceHull( *start.m_pVector, *end.m_pVector,
-					*hullmin.m_pVector, *hullmax.m_pVector,
-					mask.m_int, &filter, &tr );
+	UTIL_TraceHull( *pVecStart, *pVecEnd,
+					*pVecHullMin, *pVecHullMax,
+					mask, &filter, &tr );
 
 	UTIL_ScriptFillTableWithTrace( hTable, tr );
 
-	UTIL_ScriptReleaseTransientValues( transientValues );
 	return true;
 }
 
@@ -630,75 +733,49 @@ static bool ScriptTraceEntity( const HSCRIPT hTable )
 		return false;
 	}
 
-	CUtlVector<ScriptVariant_t *> transientValues;
-
-	const char *pszErrorFormat = "Script error! Table passed to TraceEntity requires \"%s\" value!\n";
+	CScriptTransientValues vars( hTable, "TraceEntity" );
 
 	// Inputs
 	// 'entity' (required)
-	ScriptVariant_t entity;
-	if ( !g_pScriptVM->GetValue( hTable, "entity", &entity ) )
+	HSCRIPT entity;
+	if ( !vars.GetRequiredValue( "entity", entity ) )
 	{
-		Warning( pszErrorFormat, "entity" );
 		return false;
 	}
-	transientValues.AddToTail( &entity );
 
 	// Entity variant must be a valid handle
-	CBaseEntity *pEntity = ( entity.m_type == FIELD_HSCRIPT ) ? ToEnt( entity ) : NULL;
+	CBaseEntity *pEntity = ToEnt( entity );
 	if ( !pEntity )
 	{
-		Warning( "Script error! TraceEntity requires \"entity\" to be a valid handle!\n" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
 
 	// 'start' (required)
-	ScriptVariant_t start;
-	if ( !g_pScriptVM->GetValue( hTable, "start", &start ) )
+	const Vector *pVecStart;
+	if ( !vars.GetRequiredValue( "start", &pVecStart ) )
 	{
-		Warning( pszErrorFormat, "start" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
-	transientValues.AddToTail( &start );
 
 	// 'end' (required)
-	ScriptVariant_t end;
-	if ( !g_pScriptVM->GetValue( hTable, "end", &end ) )
+	const Vector *pVecEnd;
+	if ( !vars.GetRequiredValue( "end", &pVecEnd ) )
 	{
-		Warning( pszErrorFormat, "end" );
-
-		UTIL_ScriptReleaseTransientValues( transientValues );
 		return false;
 	}
-	transientValues.AddToTail( &end );
 
-	// 'mask'
-	ScriptVariant_t mask( MASK_VISIBLE_AND_NPCS );
-	g_pScriptVM->GetValue( hTable, "mask", &mask );
-	transientValues.AddToTail( &mask );
-
-	// 'ignore'
-	ScriptVariant_t ignore( ( HSCRIPT )NULL );
-	g_pScriptVM->GetValue( hTable, "ignore", &ignore );
-	transientValues.AddToTail( &ignore );
-
-	// 'callback'
-	ScriptVariant_t callback( ( HSCRIPT )NULL );
-	g_pScriptVM->GetValue( hTable, "callback", &callback );
-	transientValues.AddToTail( &callback );
+	// Optional variables
+	const int mask = vars.GetInt( "mask", MASK_VISIBLE_AND_NPCS );
+	const HSCRIPT ignore = vars.GetScriptInstance( "ignore" );
+	const HSCRIPT callback = vars.GetScriptInstance( "callback" );
 
 	// Trace
-	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript, pEntity );
+	CScriptTraceFilter filter( ToEnt( ignore ), callback, pEntity );
 	trace_t tr;
-	UTIL_TraceEntity( pEntity, *start.m_pVector, *end.m_pVector, mask.m_int, &filter, &tr );
+	UTIL_TraceEntity( pEntity, *pVecStart, *pVecEnd, mask, &filter, &tr );
 
 	UTIL_ScriptFillTableWithTrace( hTable, tr );
 
-	UTIL_ScriptReleaseTransientValues( transientValues );
 	return true;
 }
 
@@ -741,19 +818,6 @@ void UTIL_ScriptFillTableWithTrace( const HSCRIPT hTable, const trace_t &tr )
 	g_pScriptVM->SetValue( hTable, "surface_name", ScriptVariant_t( tr.surface.name ) );
 	g_pScriptVM->SetValue( hTable, "surface_flags", ScriptVariant_t( tr.surface.flags ) );
 	g_pScriptVM->SetValue( hTable, "surface_props", ScriptVariant_t( tr.surface.surfaceProps ) );
-}
-
-// @NMRiH - Felis
-void UTIL_ScriptReleaseTransientValues( CUtlVector<ScriptVariant_t *> &transientValues )
-{
-	FOR_EACH_VEC( transientValues, idx )
-	{
-		ScriptVariant_t &value = *transientValues[idx];
-		if ( !value.m_hScript )
-			continue;
-
-		g_pScriptVM->ReleaseValue( value );
-	}
 }
 
 #ifdef MAPBASE_VSCRIPT
@@ -1264,6 +1328,9 @@ public:
 		if ( g_pScriptVM )
 			g_pScriptVM->Frame( gpGlobals->frametime );
 	}
+
+	// @NMRiH - Felis
+	virtual const char *Name() { return "CVScriptGameSystem"; }
 
 	bool m_bAllowEntityCreationInScripts;
 };
