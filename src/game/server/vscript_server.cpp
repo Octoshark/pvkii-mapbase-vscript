@@ -428,9 +428,8 @@ void UTIL_ScriptReleaseTransientValues( CUtlVector<ScriptVariant_t *> &transient
 class CScriptTraceFilter : public CTraceFilterSimple
 {
 public:
-	CScriptTraceFilter( const IHandleEntity *passentity = NULL, const int collisionGroup = COLLISION_GROUP_NONE,
-						const HSCRIPT scriptCallback = NULL, const IHandleEntity *pOwnerEntity = NULL )
-		: CTraceFilterSimple( passentity, collisionGroup ), m_hScriptCallback( scriptCallback ), m_pOwnerEntity( pOwnerEntity )
+	CScriptTraceFilter( const IHandleEntity *passentity = NULL, const HSCRIPT scriptCallback = NULL, const IHandleEntity *pOwnerEntity = NULL )
+		: CTraceFilterSimple( passentity, COLLISION_GROUP_NONE ), m_hScriptCallback( scriptCallback ), m_pOwnerEntity( pOwnerEntity )
 	{}
 
 	bool ShouldHitEntity( IHandleEntity *pHandleEntity, int contentsMask ) OVERRIDE
@@ -516,7 +515,7 @@ static bool ScriptTraceLineEx( const HSCRIPT hTable )
 	transientValues.AddToTail( &callback );
 
 	// Trace
-	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript );
+	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), callback.m_hScript );
 	trace_t tr;
 	UTIL_TraceLine( *start.m_pVector, *end.m_pVector, mask.m_int, &filter, &tr );
 
@@ -561,7 +560,7 @@ static bool ScriptTraceHull( const HSCRIPT hTable )
 
 	// 'hullmin' (required)
 	ScriptVariant_t hullmin;
-	if ( !g_pScriptVM->GetValue( hTable, "hullmin", &end ) )
+	if ( !g_pScriptVM->GetValue( hTable, "hullmin", &hullmin ) )
 	{
 		Warning( pszErrorFormat, "hullmin" );
 
@@ -572,7 +571,7 @@ static bool ScriptTraceHull( const HSCRIPT hTable )
 
 	// 'hullmax' (required)
 	ScriptVariant_t hullmax;
-	if ( !g_pScriptVM->GetValue( hTable, "hullmax", &end ) )
+	if ( !g_pScriptVM->GetValue( hTable, "hullmax", &hullmax ) )
 	{
 		Warning( pszErrorFormat, "hullmax" );
 
@@ -597,7 +596,7 @@ static bool ScriptTraceHull( const HSCRIPT hTable )
 	transientValues.AddToTail( &callback );
 
 	// Trace
-	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript );
+	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), callback.m_hScript );
 	trace_t tr;
 	UTIL_TraceHull( *start.m_pVector, *end.m_pVector,
 					*hullmin.m_pVector, *hullmax.m_pVector,
@@ -679,7 +678,7 @@ static bool ScriptTraceEntity( const HSCRIPT hTable )
 	transientValues.AddToTail( &callback );
 
 	// Trace
-	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), COLLISION_GROUP_NONE, callback.m_hScript, pEntity );
+	CScriptTraceFilter filter( ToEnt( ignore.m_hScript ), callback.m_hScript, pEntity );
 	trace_t tr;
 	UTIL_TraceEntity( pEntity, *start.m_pVector, *end.m_pVector, mask.m_int, &filter, &tr );
 
@@ -1226,6 +1225,9 @@ public:
 		if ( g_pScriptVM )
 			g_pScriptVM->Frame( gpGlobals->frametime );
 	}
+
+	// @NMRiH - Felis
+	virtual const char *Name() { return "CVScriptGameSystem"; }
 
 	bool m_bAllowEntityCreationInScripts;
 };

@@ -2599,10 +2599,16 @@ int g_iNextScriptGameEventListenerIndex = 0;
 class CScriptGameEventListener : public IGameEventListener2, public CAutoGameSystem
 {
 public:
+	// @NMRiH - Felis
+	CScriptGameEventListener( const char *pszName )
+		: m_bActive( false )
+	/*
 	CScriptGameEventListener() : m_bActive(false)
+	*/
 	{
 		// @NMRiH - Felis
 		m_index = g_iNextScriptGameEventListenerIndex++;
+		m_pszName = V_strdup( pszName );
 
 #ifdef _DEBUG
 		m_nEventTick = 0;
@@ -2612,7 +2618,13 @@ public:
 	~CScriptGameEventListener()
 	{
 		StopListeningForEvent();
+
+		// @NMRiH - Felis
+		delete[] m_pszName;
 	}
+
+	// @NMRiH - Felis
+	virtual const char *Name() { return m_pszName; }
 
 	int ListenToGameEvent( const char* szEvent, HSCRIPT hFunc, const char* szContext );
 	void StopListeningForEvent();
@@ -2637,6 +2649,9 @@ private:
 #ifdef _DEBUG
 	int m_nEventTick;
 #endif
+
+	// @NMRiH - Felis
+	char *m_pszName;
 
 	static StringHashFunctor Hash;
 	static inline unsigned int HashContext( const char* c ) { return c ? Hash(c) : 0; }
@@ -3047,7 +3062,13 @@ static int ListenToGameEvent( const char* szEvent, HSCRIPT hFunc, const char* sz
 	// @NMRiH - Felis: Use persistent handle
 	hFunc = hFunc ? g_pScriptVM->DuplicateObject( hFunc ) : NULL;
 
+	// @NMRiH - Felis
+	char szName[256];
+	V_sprintf_safe( szName, "CScriptGameEventListener_%s_%s", szEvent, szContext );
+	CScriptGameEventListener *p = new CScriptGameEventListener( szName );
+	/*
 	CScriptGameEventListener *p = new CScriptGameEventListener();
+	*/
 	return p->ListenToGameEvent( szEvent, hFunc, szContext );
 }
 
@@ -3401,6 +3422,11 @@ class CScriptReadWriteFile : public CAutoGameSystem
 	// A singleton class with all static members is used to be able to free the read string on level shutdown,
 	// and register script funcs directly. Same reason applies to CScriptSaveRestoreUtil
 public:
+	// @NMRiH - Felis
+	CScriptReadWriteFile( const char *pszName )
+		: CAutoGameSystem( pszName )
+	{}
+
 	// @NMRiH - Felis: Disabled
 #if 0
 	static bool FileWrite( const char *szFile, const char *szInput );
@@ -3428,7 +3454,11 @@ public:
 private:
 	static char *m_pszReturnReadFile;
 
+	// @NMRiH - Felis
+} g_ScriptReadWrite( "CScriptReadWriteFile" );
+/*
 } g_ScriptReadWrite;
+*/
 
 char *CScriptReadWriteFile::m_pszReturnReadFile = NULL;
 
@@ -5153,6 +5183,11 @@ class CScriptConvarAccessor : public CAutoGameSystem
 	};
 
 public:
+	// @NMRiH - Felis
+	CScriptConvarAccessor( const char *pszName )
+		: CAutoGameSystem( pszName )
+	{}
+
 	// @NMRiH - Felis: Lifted from utlcommon.h
 	// FNV-1A caseless string hash
 	static unsigned int Hash( const char *psz )
@@ -5387,7 +5422,11 @@ public:
 	}
 	*/
 
+// @NMRiH - Felis
+} g_ScriptConvarAccessor( "CScriptConvarAccessor" );
+/*
 } g_ScriptConvarAccessor;
+*/
 
 
 void CScriptConvarAccessor::RegisterCommand( const char *name, HSCRIPT fn, const char *helpString, int flags )
