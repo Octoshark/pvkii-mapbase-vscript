@@ -217,15 +217,15 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptEntityIterator, "CEntities", SCRIPT_SINGLETO
 	DEFINE_SCRIPTFUNC( DisableEntityListening, "Disables the 'OnEntity' hooks." )
 	*/
 
-	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityCreated ), "OnEntityCreated", FIELD_VOID, "Called when an entity is created. Requires EnableEntityListening() to be fired beforehand." )
+	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityCreated ), "OnEntityCreated", FIELD_VOID, "Called when an entity is created." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
 
-	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntitySpawned ), "OnEntitySpawned", FIELD_VOID, "Called when an entity spawns. Requires EnableEntityListening() to be fired beforehand." )
+	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntitySpawned ), "OnEntitySpawned", FIELD_VOID, "Called when an entity spawns." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
 
-	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityDeleted ), "OnEntityDeleted", FIELD_VOID, "Called when an entity is deleted. Requires EnableEntityListening() to be fired beforehand." )
+	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityDeleted ), "OnEntityDeleted", FIELD_VOID, "Called when an entity is deleted." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
 
@@ -454,7 +454,7 @@ public:
 	float GetFloat( const char *pszKey, const float flDefaultValue = 0.0f ) { return InternalGetValue<float>( pszKey, flDefaultValue ); }
 	const char *GetString( const char *pszKey, const char *pszDefaultValue ) { return InternalGetString( pszKey, pszDefaultValue ); }
 	const Vector &GetVector( const char *pszKey ) { return InternalGetVector( pszKey ); }
-	HSCRIPT GetScriptInstance( const char *pszKey ) { return InternalGetValue<HSCRIPT>( pszKey ); }
+	HSCRIPT GetScriptInstance( const char *pszKey ) { return InternalGetScriptInstance( pszKey ); }
 
 	//-----------------------------------------------------------------------------
 
@@ -462,7 +462,7 @@ public:
 	bool GetRequiredValue( const char *pszKey, float &dest ) { return InternalGetRequiredValue( pszKey, dest ); }
 	bool GetRequiredValue( const char *pszKey, const char **pDest ) { return InternalGetRequiredString( pszKey, pDest ); }
 	bool GetRequiredValue( const char *pszKey, const Vector **pDest ) { return InternalGetRequiredVector( pszKey, pDest ); }
-	bool GetRequiredValue( const char *pszKey, HSCRIPT &dest ) { return InternalGetRequiredValue( pszKey, dest ); }
+	bool GetRequiredValue( const char *pszKey, HSCRIPT &dest ) { return InternalGetRequiredScriptInstance( pszKey, dest ); }
 
 protected:
 	bool GetVariant( const char *pszKey, ScriptVariant_t &variant )
@@ -486,10 +486,17 @@ protected:
 	T InternalGetValue( const char *pszKey, T defaultValue = 0 )
 	{
 		ScriptVariant_t variant;
-		if ( !GetVariant( pszKey, variant ) ||
-			 ( ScriptDeduceType( T ) == FIELD_HSCRIPT && !variant.m_hScript ) )
+		if ( !GetVariant( pszKey, variant ) )
 		{
 			return defaultValue;
+		}
+
+		if ( variant.m_type != ScriptDeduceType( T ) )
+		{
+			// Currenly only used for int/float, so this is fine
+			T convertedValue;
+			variant.AssignTo( &convertedValue );
+			return convertedValue;
 		}
 
 		return variant;
@@ -517,6 +524,17 @@ protected:
 		return *variant.m_pVector;
 	}
 
+	HSCRIPT InternalGetScriptInstance( const char *pszKey )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) || variant.m_type != FIELD_HSCRIPT )
+		{
+			return NULL;
+		}
+
+		return variant;
+	}
+
 	//-----------------------------------------------------------------------------
 
 	template <typename T>
@@ -529,9 +547,10 @@ protected:
 			return false;
 		}
 
-		if ( ScriptDeduceType( T ) == FIELD_HSCRIPT && !variant.m_hScript )
+		if ( variant.m_type != ScriptDeduceType( T ) )
 		{
-			dest = 0;
+			// Currenly only used for int/float, so this is fine
+			variant.AssignTo( &dest );
 		}
 		else
 		{
@@ -568,6 +587,21 @@ protected:
 		}
 
 		*pDest = variant.m_pVector;
+		return true;
+	}
+
+	bool InternalGetRequiredScriptInstance( const char *pszKey, HSCRIPT &dest )
+	{
+		ScriptVariant_t variant;
+		if ( !GetVariant( pszKey, variant ) || variant.m_type != FIELD_HSCRIPT )
+		{
+			PrintRequiredValueWarning( pszKey );
+
+			dest = NULL;
+			return false;
+		}
+
+		dest = variant.m_hScript;
 		return true;
 	}
 
