@@ -209,15 +209,15 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CScriptEntityIterator, "CEntities", SCRIPT_SINGLETO
 	DEFINE_SCRIPTFUNC( DisableEntityListening, "Disables the 'OnEntity' hooks." )
 	*/
 
-	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityCreated ), "OnEntityCreated", FIELD_VOID, "Called when an entity is created. Requires EnableEntityListening() to be fired beforehand." )
+	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityCreated ), "OnEntityCreated", FIELD_VOID, "Called when an entity is created." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
 
-	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntitySpawned ), "OnEntitySpawned", FIELD_VOID, "Called when an entity spawns. Requires EnableEntityListening() to be fired beforehand." )
+	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntitySpawned ), "OnEntitySpawned", FIELD_VOID, "Called when an entity spawns." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
 
-	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityDeleted ), "OnEntityDeleted", FIELD_VOID, "Called when an entity is deleted. Requires EnableEntityListening() to be fired beforehand." )
+	BEGIN_SCRIPTHOOK( GET_SCRIPTHOOK( OnEntityDeleted ), "OnEntityDeleted", FIELD_VOID, "Called when an entity is deleted." )
 		DEFINE_SCRIPTHOOK_PARAM( "entity", FIELD_HSCRIPT )
 	END_SCRIPTHOOK()
 
