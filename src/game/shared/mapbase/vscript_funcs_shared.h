@@ -135,6 +135,27 @@ public:
 		return m_hScriptInstance;
 	}
 
+	// @NMRiH - Felis: Hacky way to convert from non-script trace_t
+	// Because; implicit copy-constructors aren't allowed
+	// Example usage is in TraceAttack script hook...
+	void ConvertFrom( const trace_t &tr )
+	{
+		startpos = tr.startpos;
+		endpos = tr.endpos;
+		plane = tr.plane; // requires RegisterPlane()
+		fraction = tr.fraction;
+		contents = tr.contents;
+		dispFlags = tr.dispFlags;
+		allsolid = tr.allsolid;
+		startsolid = tr.startsolid;
+		fractionleftsolid = tr.fractionleftsolid;
+		surface = tr.surface; // requires RegisterSurface()
+		hitgroup = tr.hitgroup;
+		physicsbone = tr.physicsbone;
+		m_pEnt = tr.m_pEnt;
+		hitbox = tr.hitbox;
+	}
+
 public:
 	float FractionLeftSolid() const		{ return fractionleftsolid; }
 	int HitGroup() const				{ return hitgroup; }

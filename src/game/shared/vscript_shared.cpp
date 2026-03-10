@@ -21,9 +21,8 @@
 #include "mapbase/vscript_singletons.h"
 #endif
 
-// @PVK2 - Felis: Unavailable
-#ifndef PVK2_DLL
 // @NMRiH - Felis
+#ifdef NMRIH_DLL
 #include "nmrih_challenge_manager.h"
 #endif
 
@@ -50,9 +49,16 @@ extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
 #endif // VMPROFILE
 
 // This is to ensure a dependency exists between the vscript library and the game DLLs
+// @NMRiH - Felis: This statically links our impl. (Mapbase/NMRiH), otherwise, vscript.dll is used...
+// @PVK2 - Felis: Always do this on PVK2 branch!
+#if defined ( NMRIH_DLL ) || defined ( PVK2_DLL )
+/*
+#ifdef NMRIH_DLL
+*/
 extern int vscript_token;
 extern int vscript_debugger_port;
 int vscript_token_hack = vscript_token;
+#endif
 
 
 
@@ -234,8 +240,7 @@ CON_COMMAND( script, "Run the text as a script" )
 		return;
 	}
 
-	// @PVK2 - Felis: Unavailable
-#ifndef PVK2_DLL
+#ifdef NMRIH_DLL
 	// @NMRiH - Felis
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
@@ -414,9 +419,8 @@ CON_COMMAND( script_execute, "Run a vscript file" )
 		return;
 	}
 
-	// @PVK2 - Felis: Unavailable
-#ifndef PVK2_DLL
 	// @NMRiH - Felis
+#ifdef NMRIH_DLL
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
 #endif
@@ -442,18 +446,19 @@ CON_COMMAND( script_debug, "Connect the vscript VM to the script debugger" )
 	if ( !g_pScriptVM )
 	{
 		// @NMRiH - Felis: Ported from Mapbase
+		// @PVK2 - Felis: Always do this on PVK2 branch!
+#if defined ( NMRIH_DLL ) || defined ( PVK2_DLL )
+/*
+#ifdef NMRIH_DLL
+*/
 		vscript_debugger_port = port;
-		
-		// @PVK2 - Felis
-#ifdef PVK2_DLL
-		ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript VM is not running, waiting for it to attach the debugger to port %d...\n", port );
-#else
-		// @NMRiH - Felis
-		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript VM is not running, waiting for it to attach the debugger to port %d...\n", port );
 #endif
-		/*
+
+#ifdef NMRIH_DLL
+		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VScript VM is not running, waiting for it to attach the debugger to port %d...\n", port );
+#else
 		Warning( "Scripting disabled or no server running\n" );
-		*/
+#endif
 		return;
 	}
 	
