@@ -1073,7 +1073,11 @@ bool VScriptServerInit()
 				IGameSystem::RegisterVScriptAllSystems();
 				*/
 
+// @PVK2 - Felis: Always do this on PVK2 branch!
+#if defined ( NMRIH_DLL ) || defined ( PVK2_DLL )
+/*
 #ifdef NMRIH_DLL // @NMRiH - Felis: Unavailable in HL2MP build
+*/
 				RegisterSharedScriptConstants();
 				RegisterSharedScriptFunctions();
 
