@@ -18,8 +18,10 @@
 #include "world.h"
 
 // @NMRiH - Felis
+#ifdef NMRIH_DLL
 #include "nmrih_challenge_manager.h"
 #include "nmrih_shareddefs.h"
+#endif
 
 #include "mapbase/vscript_singletons.h"
 
@@ -486,7 +488,7 @@ protected:
 		if ( variant.m_type != ScriptDeduceType( T ) )
 		{
 			// Currenly only used for int/float, so this is fine
-			T convertedValue;
+			T convertedValue = 0;
 			variant.AssignTo( &convertedValue );
 			return convertedValue;
 		}
@@ -898,6 +900,7 @@ void ScriptCenterPrintAll( const char *pszMsgName )
 }
 
 // @NMRiH - Felis: FMOD stuff
+#ifdef NMRIH_DLL
 extern int FMOD_PrecacheSound( const char *pszSound, int inFlags, int *pOutFlags /* = NULL */ );
 bool Script_FMOD_PrecacheSound( const char *pszSound )
 {
@@ -913,6 +916,7 @@ bool Script_FMOD_PrecacheSound( const char *pszSound )
 	const int index = FMOD_PrecacheSound( pszSound, 0, NULL );
 	return index != FMOD_INVALID_SOUND_INDEX;
 }
+#endif
 
 bool VScriptServerInit()
 {
@@ -977,7 +981,11 @@ bool VScriptServerInit()
 			if( g_pScriptVM )
 			{
 				// @NMRiH - Felis
+#ifdef NMRIH_DLL
 				NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+#else
+				Msg( "VSCRIPT SERVER: Started VScript virtual machine using script language '%s'\n", g_pScriptVM->GetLanguageName() );
+#endif
 
 				GetScriptHookManager().OnInit();
 
@@ -1033,7 +1041,9 @@ bool VScriptServerInit()
 				ScriptRegisterFunctionNamed( g_pScriptVM, ScriptCenterPrintAllWithParams, "CenterPrintAllWithParams", "Sends HUD text message to all clients, with optional string params. Format is limited to strings and is mapped to param order, i.e. %s1, %s2, %s3, %s4. You can pass an empty string as a param to skip. Usage: CenterPrintAllWithParams(<string>, <p1>, <p2>, <p3>, <p4>)" );
 
 				// @NMRiH - Felis: FMOD stuff
+#ifdef NMRIH_DLL
 				ScriptRegisterFunctionNamed( g_pScriptVM, Script_FMOD_PrecacheSound, "FMOD_PrecacheSound", "Precaches a sound file or soundscript entry to FMOD sound system." );
+#endif
 
 				// @NMRiH - Felis: Global entity listener
 				gEntList.AddListenerEntity( &g_ScriptEntityIterator );
@@ -1053,6 +1063,7 @@ bool VScriptServerInit()
 				IGameSystem::RegisterVScriptAllSystems();
 				*/
 
+#ifdef NMRIH_DLL // @NMRiH - Felis: Unavailable in HL2MP build
 				RegisterSharedScriptConstants();
 				RegisterSharedScriptFunctions();
 
@@ -1061,6 +1072,7 @@ bool VScriptServerInit()
 					g_pScriptVM->ConnectDebugger( vscript_debugger_port );
 					vscript_debugger_port = 0;
 				}
+#endif
 
 				if (scriptLanguage == SL_SQUIRREL)
 				{
@@ -1102,7 +1114,11 @@ bool VScriptServerInit()
 	else
 	{
 		// @NMRiH - Felis
+#ifdef NMRIH_DLL
 		NMRiH_ConColorMsg( 0, CON_COLOR_VSCRIPT, "\nVSCRIPT: Scripting is disabled.\n" );
+#else
+		Msg( "\nVSCRIPT: Scripting is disabled.\n" );
+#endif
 	}
 	g_pScriptVM = NULL;
 	return false;
@@ -1168,8 +1184,10 @@ CON_COMMAND( script_reload_code, "Execute a vscript file, replacing existing fun
 	}
 
 	// @NMRiH - Felis
+#ifdef NMRIH_DLL
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	VScriptServerReplaceClosures( args[1], NULL, true );
 }
@@ -1199,8 +1217,10 @@ CON_COMMAND( script_reload_entity_code, "Execute all of this entity's VScripts, 
 		return;
 
 	// @NMRiH - Felis
+#ifdef NMRIH_DLL
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	CBaseEntity *pEntity = NULL;
 	while ( (pEntity = GetNextCommandEntity( pPlayer, pszTarget, pEntity )) != NULL )
@@ -1245,8 +1265,10 @@ CON_COMMAND( script_reload_think, "Execute an activation script, replacing exist
 		return;
 
 	// @NMRiH - Felis
+#ifdef NMRIH_DLL
 	if ( GetChallengeManager()->IsChallengeModeActive() )
 		GetChallengeManager()->InvalidateResult( CHALLENGE_REJECT_OUTSIDE_VSCRIPT );
+#endif
 
 	CBaseEntity *pEntity = NULL;
 	while ( (pEntity = GetNextCommandEntity( pPlayer, pszTarget, pEntity )) != NULL )

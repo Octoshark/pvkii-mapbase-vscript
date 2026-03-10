@@ -95,6 +95,12 @@ BEGIN_SCRIPTDESC_ROOT_NAMED( CGlobalSys, "CGlobalSys", SCRIPT_SINGLETON "GlobalS
 END_SCRIPTDESC();
 */
 
+// @NMRiH - Felis: Expose perf clock since clock() was insufficient
+float Script_Plat_FloatTime()
+{
+	return (float)Plat_FloatTime();
+}
+
 // ----------------------------------------------------------------------------
 // KeyValues access - CBaseEntity::ScriptGetKeyFromModel returns root KeyValues
 // ----------------------------------------------------------------------------
@@ -461,6 +467,9 @@ void RegisterBaseBindings( IScriptVM *pVM )
 	/*
 	ScriptRegisterFunction( pVM, GetCPUUsage, "Get CPU usage percentage." );
 	*/
+
+	// @NMRiH - Felis: Expose perf clock since clock() was insufficient
+	ScriptRegisterFunctionNamed( pVM, Script_Plat_FloatTime, "Plat_FloatTime", "Returns time in seconds since the module was loaded. (Use only for profiling, this is *not* the game time!)" );
 
 	//-----------------------------------------------------------------------------
 

@@ -330,7 +330,7 @@ namespace SQVector
 			return sq_throwerror(vm, "Expected Vector._get(string)");
 		}
 
-		if (key[0] < 'x' || key['0'] > 'z' || key[1] != '\0')
+		if (key[0] < 'x' || key[0] > 'z' || key[1] != '\0')
 		{
 			return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 		}
@@ -356,7 +356,7 @@ namespace SQVector
 			return sq_throwerror(vm, "Expected Vector._set(string)");
 		}
 
-		if (key[0] < 'x' || key['0'] > 'z' || key[1] != '\0')
+		if (key[0] < 'x' || key[0] > 'z' || key[1] != '\0')
 		{
 			return sqstd_throwerrorf(vm, "the index '%.50s' does not exist", key);
 		}
@@ -2356,10 +2356,33 @@ void SquirrelVM::ReleaseScope(HSCRIPT hScript)
 	HSQOBJECT* obj = (HSQOBJECT*)hScript;
 	sq_pushobject(vm_, *obj);
 
+	// @NMRiH - Felis: Table release fix
+	// Previous code attempted to rawdelete a table named "__vname" from parent, which is a keyname
+	// So, get the value assigned to "__vname" which matches the actual table
+	sq_pushstring(vm_, "__vname", -1);
+	if (sq_get(vm_, -2) != SQ_OK)
+	{
+		// If there's no identifier, just release and bail
+		sq_pop(vm_, 2);
+		sq_release(vm_, obj);
+		delete obj;
+		return;
+	}
+	const char *val;
+	if (SQ_SUCCEEDED(sq_getstring(vm_, -1, &val)))
+	{
+		sq_pop(vm_, 1); // pop "__vname"
+		sq_getdelegate(vm_, -1); // go to parent table
+		sq_pushstring(vm_, val, -1); // actually rawdelete via table name
+
+		sq_rawdeleteslot(vm_, -2, SQFalse);
+	}
+	/*
 	sq_getdelegate(vm_, -1);
 
 	sq_pushstring(vm_, "__vname", -1);
 	sq_rawdeleteslot(vm_, -2, SQFalse);
+	*/
 
 	sq_pop(vm_, 2);
 
