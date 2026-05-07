@@ -32,6 +32,9 @@
 
 extern ScriptClassDesc_t * GetScriptDesc( CBaseEntity * );
 
+// @NMRiH - Felis: Ported from Mapbase
+ConVar script_connect_debugger_on_mapspawn( "script_connect_debugger_on_mapspawn", "0" );
+
 // #define VMPROFILE 1
 
 #ifdef VMPROFILE
@@ -1079,7 +1082,14 @@ bool VScriptServerInit()
 				RegisterSharedScriptConstants();
 				RegisterSharedScriptFunctions();
 
-				g_pScriptVM->ConnectDebugger( vscript_debugger_port );
+				if ( script_connect_debugger_on_mapspawn.GetInt() == 2 )
+				{
+					g_pScriptVM->ConnectDebugger( vscript_debugger_port, 10.0f );
+				}
+				else if ( script_connect_debugger_on_mapspawn.GetInt() != 0 )
+				{
+					g_pScriptVM->ConnectDebugger( vscript_debugger_port );
+				}
 #endif
 
 				if (scriptLanguage == SL_SQUIRREL)
