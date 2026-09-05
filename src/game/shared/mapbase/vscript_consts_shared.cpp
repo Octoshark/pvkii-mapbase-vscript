@@ -24,6 +24,9 @@
 
 // @NMRiH - Felis
 #include "particle_parse.h"
+#ifdef NMRIH_DLL
+#include "te_voice_command.h"
+#endif
 
 // @PVK2 - Felis
 #ifdef PVK2_DLL
@@ -141,6 +144,29 @@ BEGIN_SCRIPTENUM( HidingSpot, "Visibility enum for nav mesh hiding spots" )
 	DEFINE_ENUMCONST_NAMED( HidingSpot::EXPOSED, "EXPOSED", "" )
 
 END_SCRIPTENUM();
+
+// @NMRiH - Felis: Voice commands
+#ifdef NMRIH_DLL
+BEGIN_SCRIPTENUM( VoiceCommand, "Player voice commands" )
+
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_AMMO, "Ammo", "\"Need ammo.\"" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_FOLLOW, "Follow", "\"Follow me.\"" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_HELP, "Help", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_NO, "No", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_STAY, "Stay", "\"Stop here.\"" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_THANKS, "Thanks", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_YES, "Yes", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_INCOMING, "Incoming", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_INJURED, "Injured", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_FIREINTHEHOLE, "FireInTheHole", "Grenade! (automatic)" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_TAUNT, "Taunt", "" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_PAIN, "Pain", "*pain* (automatic)" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_DEATH, "Death", "*death* (automatic)" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_BLEEDOUT, "BleedOut", "*bleeding pain* (automatic)" )
+	DEFINE_ENUMCONST_NAMED( VOICE_COMMAND_DROWN, "Drown", "*drown* (automatic)" )
+
+END_SCRIPTENUM();
+#endif
 
 //=============================================================================
 //=============================================================================
